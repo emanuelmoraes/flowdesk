@@ -45,10 +45,10 @@ export default function Home() {
           {/* CTA */}
           <div className="space-y-4">
             <Link
-              href="/criar-projeto"
+              href="/projetos"
               className="inline-block bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl"
             >
-              Criar Meu Primeiro Projeto
+              Gerenciar Projetos
             </Link>
             
             <p className="text-sm text-gray-500">

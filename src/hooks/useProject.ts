@@ -64,10 +64,11 @@ export const useTickets = (projectId: string) => {
     const fetchTickets = async () => {
       try {
         setLoading(true);
+        // Removido orderBy para evitar necessidade de índice composto
+        // A ordenação será feita no cliente
         const q = query(
           collection(db, 'tickets'),
-          where('projectId', '==', projectId),
-          orderBy('order', 'asc')
+          where('projectId', '==', projectId)
         );
         const querySnapshot = await getDocs(q);
         
@@ -77,6 +78,9 @@ export const useTickets = (projectId: string) => {
           createdAt: doc.data().createdAt?.toDate(),
           updatedAt: doc.data().updatedAt?.toDate(),
         })) as Ticket[];
+        
+        // Ordena no cliente por order
+        ticketsData.sort((a, b) => a.order - b.order);
         
         setTickets(ticketsData);
       } catch (err) {

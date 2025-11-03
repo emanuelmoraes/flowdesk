@@ -61,6 +61,15 @@ export default function CriarProjetoPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
+        {/* Botão Voltar */}
+        <button
+          onClick={() => router.push('/projetos')}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+        >
+          <span className="text-xl">←</span>
+          <span className="font-medium">Voltar para projetos</span>
+        </button>
+
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             Criar Novo Projeto
@@ -132,7 +141,7 @@ export default function CriarProjetoPage() {
             <div className="flex gap-4">
               <button
                 type="button"
-                onClick={() => router.push('/')}
+                onClick={() => router.push('/projetos')}
                 className="flex-1 px-6 py-3 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Cancelar
