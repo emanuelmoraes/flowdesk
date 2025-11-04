@@ -18,7 +18,7 @@ export default function ProjectPage() {
   const [newTicketTitle, setNewTicketTitle] = useState('');
   const [newTicketDescription, setNewTicketDescription] = useState('');
   const [newTicketPriority, setNewTicketPriority] = useState<TicketPriority>('medium');
-  const [newTicketStatus, setNewTicketStatus] = useState<TicketStatus>('todo');
+  const [newTicketStatus, setNewTicketStatus] = useState<TicketStatus>('backlog');
 
   const handleCreateTicket = async () => {
     if (!project || !newTicketTitle.trim()) return;
@@ -51,7 +51,7 @@ export default function ProjectPage() {
       setNewTicketTitle('');
       setNewTicketDescription('');
       setNewTicketPriority('medium');
-      setNewTicketStatus('todo');
+      setNewTicketStatus('backlog');
       setShowCreateModal(false);
     } catch (error) {
       console.error('Erro ao criar ticket:', error);
@@ -103,9 +103,7 @@ export default function ProjectPage() {
             </button>
           </div>
           
-          {project.description && (
-            <p className="text-gray-600 mt-2">{project.description}</p>
-          )}
+          
         </div>
       </header>
 

@@ -3,15 +3,20 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { collection, query, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, getDocs, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Project } from '@/types';
+import { Project, Ticket } from '@/types';
+
+interface ProjectWithProgress extends Project {
+  progress: number;
+  totalTickets: number;
+  completedTickets: number;
+}
 
 export default function ProjetosPage() {
   const router = useRouter();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProjects();
@@ -30,25 +35,52 @@ export default function ProjetosPage() {
         updatedAt: doc.data().updatedAt?.toDate(),
       })) as Project[];
       
-      // Ordena por data de atualização (mais recente primeiro)
-      projectsData.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+      // Para cada projeto, buscar os tickets e calcular o progresso
+      const projectsWithProgress = await Promise.all(
+        projectsData.map(async (project) => {
+          try {
+            // Buscar todos os tickets do projeto
+            const ticketsQuery = query(
+              collection(db, 'tickets'),
+              where('projectId', '==', project.id)
+            );
+            const ticketsSnapshot = await getDocs(ticketsQuery);
+            
+            const tickets = ticketsSnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data(),
+            })) as Ticket[];
+            
+            const totalTickets = tickets.length;
+            const completedTickets = tickets.filter(ticket => ticket.status === 'done').length;
+            const progress = totalTickets > 0 ? Math.round((completedTickets * 100) / totalTickets) : 0;
+            
+            return {
+              ...project,
+              progress,
+              totalTickets,
+              completedTickets,
+            } as ProjectWithProgress;
+          } catch (error) {
+            console.error(`Erro ao buscar tickets do projeto ${project.id}:`, error);
+            return {
+              ...project,
+              progress: 0,
+              totalTickets: 0,
+              completedTickets: 0,
+            } as ProjectWithProgress;
+          }
+        })
+      );
       
-      setProjects(projectsData);
+      // Ordena por data de atualização (mais recente primeiro)
+      projectsWithProgress.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+      
+      setProjects(projectsWithProgress);
     } catch (error) {
       console.error('Erro ao carregar projetos:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDelete = async (projectId: string) => {
-    try {
-      await deleteDoc(doc(db, 'projects', projectId));
-      setProjects(projects.filter(p => p.id !== projectId));
-      setDeleteConfirm(null);
-    } catch (error) {
-      console.error('Erro ao deletar projeto:', error);
-      alert('Erro ao deletar projeto. Tente novamente.');
     }
   };
 
@@ -122,12 +154,36 @@ export default function ProjetosPage() {
                     flowdesk.com/{project.slug}
                   </p>
                   
-                  {/* Descrição */}
-                  {project.description && (
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                      {project.description}
+                  {/* Progresso do Projeto */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Progresso</span>
+                      <span className="text-sm font-bold text-blue-600">{project.progress}%</span>
+                    </div>
+                    
+                    {/* Barra de Progresso */}
+                    <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                      <div
+                        className={`h-2.5 rounded-full transition-all duration-500 ${
+                          project.progress === 100
+                            ? 'bg-green-600'
+                            : project.progress >= 75
+                            ? 'bg-blue-600'
+                            : project.progress >= 50
+                            ? 'bg-yellow-500'
+                            : project.progress >= 25
+                            ? 'bg-orange-500'
+                            : 'bg-red-500'
+                        }`}
+                        style={{ width: `${project.progress}%` }}
+                      ></div>
+                    </div>
+                    
+                    {/* Informação de Tickets */}
+                    <p className="text-xs text-gray-500 mt-1">
+                      {project.completedTickets} de {project.totalTickets} tickets concluídos
                     </p>
-                  )}
+                  </div>
                   
                   {/* Data de Atualização */}
                   <p className="text-xs text-gray-500 mb-4">
@@ -137,17 +193,17 @@ export default function ProjetosPage() {
                   {/* Botões de Ação */}
                   <div className="flex gap-2">
                     <button
-                      onClick={() => router.push(`/${project.slug}`)}
-                      className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+                      onClick={() => router.push(`/projetos/editar/${project.id}`)}
+                      className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors font-medium text-sm"
                     >
-                      Abrir
+                      Editar
                     </button>
                     
                     <button
-                      onClick={() => setDeleteConfirm(project.id)}
-                      className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium text-sm"
+                      onClick={() => router.push(`/${project.slug}`)}
+                      className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
                     >
-                      Deletar
+                      Tickets
                     </button>
                   </div>
                 </div>
@@ -156,33 +212,6 @@ export default function ProjetosPage() {
           </div>
         )}
       </main>
-
-      {/* Modal de Confirmação de Exclusão */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h2 className="text-2xl font-bold mb-4 text-gray-900">Confirmar Exclusão</h2>
-            <p className="text-gray-600 mb-6">
-              Tem certeza que deseja deletar este projeto? Esta ação não pode ser desfeita e todos os tickets serão perdidos.
-            </p>
-            
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => handleDelete(deleteConfirm)}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
-              >
-                Deletar Projeto
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
