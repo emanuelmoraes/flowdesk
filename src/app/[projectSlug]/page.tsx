@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useProject, useTickets } from '@/hooks/useProject';
 import KanbanBoard from '@/components/KanbanBoard';
-import { Ticket, TicketPriority, TicketStatus } from '@/types';
+import { Ticket, TicketPriority, TicketStatus, TicketType } from '@/types';
 import { createTicket } from '@/lib/services';
 
 export default function ProjectPage() {
@@ -19,17 +19,28 @@ export default function ProjectPage() {
   const [newTicketDescription, setNewTicketDescription] = useState('');
   const [newTicketPriority, setNewTicketPriority] = useState<TicketPriority>('medium');
   const [newTicketStatus, setNewTicketStatus] = useState<TicketStatus>('backlog');
+  const [newTicketType, setNewTicketType] = useState<TicketType>('tarefa');
+  const [newTicketTags, setNewTicketTags] = useState<string>('');
+  const [tagInput, setTagInput] = useState<string>('');
 
   const handleCreateTicket = async () => {
     if (!project || !newTicketTitle.trim()) return;
 
     try {
+      // Processa as tags
+      const tagsArray = newTicketTags
+        .split(',')
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0);
+
       const ticketId = await createTicket(
         project.id,
         newTicketTitle,
         newTicketDescription,
         newTicketStatus,
-        newTicketPriority
+        newTicketPriority,
+        newTicketType,
+        tagsArray
       );
 
       // Adiciona o novo ticket localmente
@@ -39,6 +50,8 @@ export default function ProjectPage() {
         description: newTicketDescription,
         status: newTicketStatus,
         priority: newTicketPriority,
+        type: newTicketType,
+        tags: tagsArray,
         projectId: project.id,
         order: tickets.filter(t => t.status === newTicketStatus).length + 1,
         createdAt: new Date(),
@@ -52,6 +65,8 @@ export default function ProjectPage() {
       setNewTicketDescription('');
       setNewTicketPriority('medium');
       setNewTicketStatus('backlog');
+      setNewTicketType('tarefa');
+      setNewTicketTags('');
       setShowCreateModal(false);
     } catch (error) {
       console.error('Erro ao criar ticket:', error);
@@ -125,7 +140,7 @@ export default function ProjectPage() {
       {/* Modal de criação de ticket */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">Novo Ticket</h2>
             
             <div className="space-y-4">
@@ -154,6 +169,44 @@ export default function ProjectPage() {
                   placeholder="Descreva o ticket (opcional)"
                 />
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Tipo *
+                  </label>
+                  <select
+                    value={newTicketType}
+                    onChange={(e) => setNewTicketType(e.target.value as TicketType)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="bug">🐛 Bug</option>
+                    <option value="melhoria">✨ Melhoria</option>
+                    <option value="tarefa">📋 Tarefa</option>
+                    <option value="estoria">📖 Estória</option>
+                    <option value="epico">🎯 Épico</option>
+                    <option value="investigacao">🔍 Investigação</option>
+                    <option value="novidade">🚀 Novidade</option>
+                    <option value="suporte">🛟 Suporte</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Prioridade
+                  </label>
+                  <select
+                    value={newTicketPriority}
+                    onChange={(e) => setNewTicketPriority(e.target.value as TicketPriority)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="low">Baixa</option>
+                    <option value="medium">Média</option>
+                    <option value="high">Alta</option>
+                    <option value="urgent">Urgente</option>
+                  </select>
+                </div>
+              </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -171,21 +224,21 @@ export default function ProjectPage() {
                   <option value="done">Concluído</option>
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Prioridade
+                  Tags
                 </label>
-                <select
-                  value={newTicketPriority}
-                  onChange={(e) => setNewTicketPriority(e.target.value as TicketPriority)}
+                <input
+                  type="text"
+                  value={newTicketTags}
+                  onChange={(e) => setNewTicketTags(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="low">Baixa</option>
-                  <option value="medium">Média</option>
-                  <option value="high">Alta</option>
-                  <option value="urgent">Urgente</option>
-                </select>
+                  placeholder="Digite as tags separadas por vírgula (ex: frontend, urgente, design)"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Separe múltiplas tags com vírgula
+                </p>
               </div>
             </div>
             

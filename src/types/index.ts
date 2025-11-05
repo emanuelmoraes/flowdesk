@@ -4,12 +4,16 @@ export type TicketStatus = 'backlog' | 'todo' | 'in-progress' | 'review' | 'done
 
 export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
 
+export type TicketType = 'bug' | 'melhoria' | 'tarefa' | 'estoria' | 'epico' | 'investigacao' | 'novidade' | 'suporte';
+
 export interface Ticket {
   id: string;
   title: string;
   description?: string;
   status: TicketStatus;
   priority: TicketPriority;
+  type: TicketType;
+  tags: string[];
   assignee?: string;
   createdAt: Date;
   updatedAt: Date;

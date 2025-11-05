@@ -11,7 +11,7 @@ import {
   getDocs
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Project, Ticket, TicketStatus, TicketPriority } from '@/types';
+import { Project, Ticket, TicketStatus, TicketPriority, TicketType } from '@/types';
 
 // Funções para Projetos
 export const createProject = async (
@@ -69,6 +69,8 @@ export const createTicket = async (
   description: string,
   status: TicketStatus,
   priority: TicketPriority,
+  type: TicketType,
+  tags: string[],
   assignee?: string
 ): Promise<string> => {
   try {
@@ -90,6 +92,8 @@ export const createTicket = async (
       description,
       status,
       priority,
+      type,
+      tags,
       assignee: assignee || null,
       order: maxOrder + 1,
       createdAt: serverTimestamp(),

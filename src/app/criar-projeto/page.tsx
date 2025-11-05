@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createProject } from '@/lib/services';
+import RichTextEditor from '@/components/RichTextEditor';
 
 export default function CriarProjetoPage() {
   const router = useRouter();
@@ -48,6 +49,7 @@ export default function CriarProjetoPage() {
       // Isso será substituído pela autenticação real
       const tempUserId = 'temp-user-' + Date.now();
       
+      // Descrição agora é HTML do RichTextEditor
       const projectId = await createProject(name, slug, description, tempUserId);
       
       // Redireciona para o projeto criado
@@ -122,14 +124,14 @@ export default function CriarProjetoPage() {
               <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
                 Descrição (opcional)
               </label>
-              <textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                rows={4}
-                placeholder="Descreva o objetivo deste projeto..."
+              <RichTextEditor
+                content={description}
+                onChange={setDescription}
+                placeholder="Descreva o objetivo deste projeto... Cole links que serão automaticamente detectados!"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Use a barra de ferramentas para formatar o texto. Links colados automaticamente se tornam clicáveis.
+              </p>
             </div>
 
             {error && (
