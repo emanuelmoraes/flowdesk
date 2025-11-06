@@ -11,6 +11,7 @@ interface KanbanColumnProps {
   title: string;
   tickets: Ticket[];
   onEditTicket?: (ticket: Ticket) => void;
+  onTicketDoubleClick?: (ticket: Ticket) => void;
 }
 
 const columnColors: Record<TicketStatus, string> = {
@@ -21,7 +22,7 @@ const columnColors: Record<TicketStatus, string> = {
   done: 'bg-green-50 border-green-300',
 };
 
-export default function KanbanColumn({ status, title, tickets, onEditTicket }: KanbanColumnProps) {
+export default function KanbanColumn({ status, title, tickets, onEditTicket, onTicketDoubleClick }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: status,
   });
@@ -44,7 +45,7 @@ export default function KanbanColumn({ status, title, tickets, onEditTicket }: K
         <SortableContext items={tickets.map(t => t.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-3 min-h-[200px]">
             {tickets.map((ticket) => (
-              <TicketCard key={ticket.id} ticket={ticket} onEdit={onEditTicket} />
+              <TicketCard key={ticket.id} ticket={ticket} onEdit={onEditTicket} onDoubleClick={onTicketDoubleClick} />
             ))}
           </div>
         </SortableContext>

@@ -8,6 +8,7 @@ import { Ticket } from '@/types';
 interface TicketCardProps {
   ticket: Ticket;
   onEdit?: (ticket: Ticket) => void;
+  onDoubleClick?: (ticket: Ticket) => void;
 }
 
 const priorityColors = {
@@ -46,7 +47,7 @@ const typeLabels = {
   suporte: '🛟 Suporte',
 };
 
-export default function TicketCard({ ticket, onEdit }: TicketCardProps) {
+export default function TicketCard({ ticket, onEdit, onDoubleClick }: TicketCardProps) {
   const {
     attributes,
     listeners,
@@ -70,6 +71,10 @@ export default function TicketCard({ ticket, onEdit }: TicketCardProps) {
       {...listeners}
       className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing"
       onClick={() => onEdit?.(ticket)}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        onDoubleClick?.(ticket);
+      }}
     >
       {/* Tipo do Ticket */}
       <div className="mb-2">

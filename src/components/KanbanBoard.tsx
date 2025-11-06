@@ -21,6 +21,7 @@ interface KanbanBoardProps {
   tickets: Ticket[];
   onTicketsUpdate: (tickets: Ticket[]) => void;
   onEditTicket?: (ticket: Ticket) => void;
+  onTicketDoubleClick?: (ticket: Ticket) => void;
 }
 
 const columns: { id: TicketStatus; title: string }[] = [
@@ -31,7 +32,7 @@ const columns: { id: TicketStatus; title: string }[] = [
   { id: 'done', title: 'Concluído' },
 ];
 
-export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket }: KanbanBoardProps) {
+export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, onTicketDoubleClick }: KanbanBoardProps) {
   const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
   
   const sensors = useSensors(
@@ -172,6 +173,7 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket }: 
             title={column.title}
             tickets={ticketsByStatus[column.id]}
             onEditTicket={onEditTicket}
+            onTicketDoubleClick={onTicketDoubleClick}
           />
         ))}
       </div>
