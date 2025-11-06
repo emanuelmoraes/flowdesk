@@ -199,12 +199,14 @@ export default function ProjetosPage() {
                       Editar
                     </button>
                     
-                    <button
-                      onClick={() => router.push(`/${project.slug}`)}
-                      className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+                    <a
+                      href={`/${project.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm text-center inline-block"
                     >
                       Tickets
-                    </button>
+                    </a>
                   </div>
                 </div>
               </div>
