@@ -34,6 +34,7 @@ const columns: { id: TicketStatus; title: string }[] = [
 
 export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, onTicketDoubleClick }: KanbanBoardProps) {
   const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
+  const [collapsedColumns, setCollapsedColumns] = useState<Set<TicketStatus>>(new Set());
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -42,6 +43,18 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, on
       },
     })
   );
+
+  const toggleColumnCollapse = (status: TicketStatus) => {
+    setCollapsedColumns(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(status)) {
+        newSet.delete(status);
+      } else {
+        newSet.add(status);
+      }
+      return newSet;
+    });
+  };
 
   const ticketsByStatus = useMemo(() => {
     const grouped: Record<TicketStatus, Ticket[]> = {
@@ -165,7 +178,7 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, on
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex gap-4 h-[calc(100vh-200px)] overflow-x-hidden">
         {columns.map((column) => (
           <KanbanColumn
             key={column.id}
@@ -174,6 +187,8 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, on
             tickets={ticketsByStatus[column.id]}
             onEditTicket={onEditTicket}
             onTicketDoubleClick={onTicketDoubleClick}
+            isCollapsed={collapsedColumns.has(column.id)}
+            onToggleCollapse={() => toggleColumnCollapse(column.id)}
           />
         ))}
       </div>
