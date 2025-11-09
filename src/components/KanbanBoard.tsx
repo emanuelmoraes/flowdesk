@@ -178,7 +178,8 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, on
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 h-[calc(100vh-200px)] overflow-x-hidden">
+      {/* Desktop: colunas ajustadas com collapse */}
+      <div className="hidden lg:flex gap-4 h-[calc(100vh-200px)] overflow-x-hidden">
         {columns.map((column) => (
           <KanbanColumn
             key={column.id}
@@ -189,6 +190,20 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, on
             onTicketDoubleClick={onTicketDoubleClick}
             isCollapsed={collapsedColumns.has(column.id)}
             onToggleCollapse={() => toggleColumnCollapse(column.id)}
+          />
+        ))}
+      </div>
+
+      {/* Mobile: scroll horizontal tradicional */}
+      <div className="flex lg:hidden gap-4 overflow-x-auto pb-4">
+        {columns.map((column) => (
+          <KanbanColumn
+            key={column.id}
+            status={column.id}
+            title={column.title}
+            tickets={ticketsByStatus[column.id]}
+            onEditTicket={onEditTicket}
+            onTicketDoubleClick={onTicketDoubleClick}
           />
         ))}
       </div>

@@ -41,7 +41,7 @@ export default function KanbanColumn({
     <div
       ref={setNodeRef}
       className={`${
-        isCollapsed ? 'w-16' : 'flex-1'
+        isCollapsed ? 'w-16' : 'flex-1 min-w-[300px] lg:min-w-0'
       } rounded-lg border-2 ${columnColors[status]} ${
         isOver ? 'ring-2 ring-blue-500' : ''
       } transition-all duration-300 overflow-hidden`}
@@ -91,7 +91,7 @@ export default function KanbanColumn({
         
         {!isCollapsed && (
           <SortableContext items={tickets.map(t => t.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-3 flex-1 overflow-y-auto">
+            <div className="space-y-3 flex-1 overflow-y-auto min-h-[200px]">
               {tickets.map((ticket) => (
                 <TicketCard key={ticket.id} ticket={ticket} onEdit={onEditTicket} onDoubleClick={onTicketDoubleClick} />
               ))}
