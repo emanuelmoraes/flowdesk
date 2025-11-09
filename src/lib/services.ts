@@ -89,7 +89,7 @@ export const createTicket = async (
     const docRef = await addDoc(collection(db, 'tickets'), {
       projectId,
       title,
-      description,
+      description: description || '',
       status,
       priority,
       type,
@@ -113,8 +113,17 @@ export const updateTicket = async (
 ): Promise<void> => {
   try {
     const ticketRef = doc(db, 'tickets', ticketId);
+    
+    // Remove campos undefined do objeto updates
+    const cleanUpdates = Object.entries(updates).reduce((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key] = value;
+      }
+      return acc;
+    }, {} as Record<string, any>);
+    
     await updateDoc(ticketRef, {
-      ...updates,
+      ...cleanUpdates,
       updatedAt: serverTimestamp(),
     });
   } catch (error) {

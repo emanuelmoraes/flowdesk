@@ -82,9 +82,9 @@ export default function ProjectPage() {
     setEditingTicket(ticket);
     setNewTicketTitle(ticket.title);
     setNewTicketDescription(ticket.description || '');
-    setNewTicketPriority(ticket.priority);
-    setNewTicketStatus(ticket.status);
-    setNewTicketType(ticket.type);
+    setNewTicketPriority(ticket.priority || 'medium');
+    setNewTicketStatus(ticket.status || 'backlog');
+    setNewTicketType(ticket.type || 'tarefa');
     setNewTicketTags(ticket.tags?.join(', ') || '');
     setShowEditModal(true);
   };
@@ -100,15 +100,22 @@ export default function ProjectPage() {
         .filter(tag => tag.length > 0);
 
       const ticketRef = doc(db, 'tickets', editingTicket.id);
-      await updateDoc(ticketRef, {
+      
+      // Prepara os dados garantindo que não há valores undefined
+      const updateData: Record<string, any> = {
         title: newTicketTitle.trim(),
-        description: newTicketDescription.trim(),
-        priority: newTicketPriority,
-        status: newTicketStatus,
-        type: newTicketType,
-        tags: tagsArray,
-        updatedAt: new Date(),
-      });
+        description: newTicketDescription?.trim() || '',
+        priority: newTicketPriority || 'medium',
+        status: newTicketStatus || 'backlog',
+        type: newTicketType || 'tarefa',
+      };
+
+      // Só adiciona tags se não for vazio
+      if (tagsArray.length > 0) {
+        updateData.tags = tagsArray;
+      }
+      
+      await updateDoc(ticketRef, updateData);
 
       // Atualiza o ticket localmente
       const updatedTickets = tickets.map(t => 
@@ -116,12 +123,11 @@ export default function ProjectPage() {
           ? {
               ...t,
               title: newTicketTitle.trim(),
-              description: newTicketDescription.trim(),
-              priority: newTicketPriority,
-              status: newTicketStatus,
-              type: newTicketType,
-              tags: tagsArray,
-              updatedAt: new Date(),
+              description: newTicketDescription?.trim() || '',
+              priority: newTicketPriority || 'medium',
+              status: newTicketStatus || 'backlog',
+              type: newTicketType || 'tarefa',
+              tags: tagsArray.length > 0 ? tagsArray : (t.tags || []),
             }
           : t
       );
