@@ -33,6 +33,7 @@ export default function GerenciarTicketsPage() {
 
   useEffect(() => {
     fetchProjectAndTickets();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   const fetchProjectAndTickets = async () => {

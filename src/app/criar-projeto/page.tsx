@@ -45,16 +45,13 @@ export default function CriarProjetoPage() {
     setLoading(true);
 
     try {
-      // Por enquanto, usaremos um ID de usuário temporário
-      // Isso será substituído pela autenticação real
-      const tempUserId = 'temp-user-' + Date.now();
-      
       // Descrição agora é HTML do RichTextEditor
-      const projectId = await createProject(name, slug, description, tempUserId);
+      await createProject(name, description);
       
       // Redireciona para o projeto criado
       router.push(`/${slug}`);
-    } catch (err: any) {
+    } catch (error: unknown) {
+      const err = error as Error;
       setError(err.message || 'Erro ao criar projeto. Tente novamente.');
       setLoading(false);
     }
