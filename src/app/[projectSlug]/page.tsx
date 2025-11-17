@@ -1,13 +1,12 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useState } from 'react';
 import { useProject, useTickets } from '@/hooks/useProject';
 import KanbanBoard from '@/components/KanbanBoard';
 import { Ticket, TicketPriority, TicketStatus, TicketType } from '@/types';
-import { createTicket } from '@/lib/services';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { createTicket, updateTicket } from '@/lib/services';
 
 export default function ProjectPage() {
   const params = useParams();
@@ -25,7 +24,6 @@ export default function ProjectPage() {
   const [newTicketStatus, setNewTicketStatus] = useState<TicketStatus>('backlog');
   const [newTicketType, setNewTicketType] = useState<TicketType>('tarefa');
   const [newTicketTags, setNewTicketTags] = useState<string>('');
-  const [tagInput, setTagInput] = useState<string>('');
 
   const handleCreateTicket = async () => {
     if (!project || !newTicketTitle.trim()) return;
@@ -78,7 +76,7 @@ export default function ProjectPage() {
     }
   };
 
-  const handleTicketDoubleClick = (ticket: Ticket) => {
+  const handleEditTicket = (ticket: Ticket) => {
     setEditingTicket(ticket);
     setNewTicketTitle(ticket.title);
     setNewTicketDescription(ticket.description || '');
@@ -93,47 +91,35 @@ export default function ProjectPage() {
     if (!editingTicket || !newTicketTitle.trim()) return;
 
     try {
-      // Processa as tags
       const tagsArray = newTicketTags
         .split(',')
         .map(tag => tag.trim())
         .filter(tag => tag.length > 0);
 
-      const ticketRef = doc(db, 'tickets', editingTicket.id);
-      
-      // Prepara os dados garantindo que não há valores undefined
-      const updateData: Record<string, any> = {
+      await updateTicket(editingTicket.id, {
         title: newTicketTitle.trim(),
-        description: newTicketDescription?.trim() || '',
+        description: newTicketDescription.trim() || '',
         priority: newTicketPriority || 'medium',
         status: newTicketStatus || 'backlog',
         type: newTicketType || 'tarefa',
-      };
+        tags: tagsArray.length > 0 ? tagsArray : [],
+      });
 
-      // Só adiciona tags se não for vazio
-      if (tagsArray.length > 0) {
-        updateData.tags = tagsArray;
-      }
-      
-      await updateDoc(ticketRef, updateData);
-
-      // Atualiza o ticket localmente
-      const updatedTickets = tickets.map(t => 
-        t.id === editingTicket.id 
+      const updatedTickets = tickets.map(t =>
+        t.id === editingTicket.id
           ? {
               ...t,
               title: newTicketTitle.trim(),
-              description: newTicketDescription?.trim() || '',
-              priority: newTicketPriority || 'medium',
-              status: newTicketStatus || 'backlog',
-              type: newTicketType || 'tarefa',
-              tags: tagsArray.length > 0 ? tagsArray : (t.tags || []),
+              description: newTicketDescription.trim() || '',
+              priority: newTicketPriority,
+              status: newTicketStatus,
+              type: newTicketType,
+              tags: tagsArray,
             }
           : t
       );
       setTickets(updatedTickets);
 
-      // Limpa e fecha o modal
       setShowEditModal(false);
       setEditingTicket(null);
       setNewTicketTitle('');
@@ -165,9 +151,9 @@ export default function ProjectPage() {
         <div className="text-center">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
           <p className="text-xl text-gray-600 mb-8">Projeto não encontrado</p>
-          <a href="/" className="text-blue-600 hover:underline">
+          <Link href="/" className="text-blue-600 hover:underline">
             Voltar para home
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -207,7 +193,7 @@ export default function ProjectPage() {
           <KanbanBoard
             tickets={tickets}
             onTicketsUpdate={setTickets}
-            onTicketDoubleClick={handleTicketDoubleClick}
+            onEditTicket={handleEditTicket}
           />
         )}
       </main>

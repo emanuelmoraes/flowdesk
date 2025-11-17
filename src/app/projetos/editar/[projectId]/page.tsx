@@ -22,6 +22,7 @@ export default function EditarProjetoPage() {
 
   useEffect(() => {
     fetchProject();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   const fetchProject = async () => {

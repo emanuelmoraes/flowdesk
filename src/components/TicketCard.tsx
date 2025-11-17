@@ -4,6 +4,7 @@ import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Ticket } from '@/types';
+import { MdEdit } from 'react-icons/md';
 
 interface TicketCardProps {
   ticket: Ticket;
@@ -37,14 +38,14 @@ const typeColors = {
 };
 
 const typeLabels = {
-  bug: '🐛 Bug',
-  melhoria: '✨ Melhoria',
-  tarefa: '📋 Tarefa',
-  estoria: '📖 Estória',
-  epico: '🎯 Épico',
-  investigacao: '🔍 Investigação',
-  novidade: '🚀 Novidade',
-  suporte: '🛟 Suporte',
+  bug: 'Bug',
+  melhoria: 'Melhoria',
+  tarefa: 'Tarefa',
+  estoria: 'Estória',
+  epico: 'Épico',
+  investigacao: 'Investigação',
+  novidade: 'Novidade',
+  suporte: 'Suporte',
 };
 
 export default function TicketCard({ ticket, onEdit, onDoubleClick }: TicketCardProps) {
@@ -63,19 +64,28 @@ export default function TicketCard({ ticket, onEdit, onDoubleClick }: TicketCard
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEdit?.(ticket);
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing"
-      onClick={() => onEdit?.(ticket)}
-      onDoubleClick={(e) => {
-        e.stopPropagation();
-        onDoubleClick?.(ticket);
-      }}
+      className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing relative group"
     >
+      {/* Botão de Editar */}
+      <button
+        onClick={handleEditClick}
+        className="absolute top-2 right-2 p-1.5 bg-blue-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-600 z-10"
+        title="Editar ticket"
+      >
+        <MdEdit size={16} />
+      </button>
+
       {/* Tipo do Ticket */}
       <div className="mb-2">
         <span className={`text-xs px-2 py-1 rounded border ${typeColors[ticket.type]}`}>

@@ -4,12 +4,7 @@ import {
   collection, 
   query, 
   where, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  doc,
-  serverTimestamp,
-  orderBy 
+  getDocs
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Project, Ticket } from '@/types';
