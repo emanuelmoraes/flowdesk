@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { collection, query, getDocs, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Project, Ticket } from '@/types';
+import { ProjectCardSkeleton } from '@/components/ui/Skeletons';
+import { calculateProjectProgress, getTicketsByProject } from '@/lib/services';
 
 interface ProjectWithProgress extends Project {
   progress: number;
@@ -25,53 +27,50 @@ export default function ProjetosPage() {
   const fetchProjects = async () => {
     try {
       setLoading(true);
-      const q = query(collection(db, 'projects'));
-      const querySnapshot = await getDocs(q);
       
-      const projectsData = querySnapshot.docs.map(doc => ({
+      // Buscar todos os projetos
+      const projectsQuery = query(collection(db, 'projects'));
+      const projectsSnapshot = await getDocs(projectsQuery);
+      
+      const projectsData = projectsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt?.toDate(),
         updatedAt: doc.data().updatedAt?.toDate(),
       })) as Project[];
       
-      // Para cada projeto, buscar os tickets e calcular o progresso
-      const projectsWithProgress = await Promise.all(
-        projectsData.map(async (project) => {
-          try {
-            // Buscar todos os tickets do projeto
-            const ticketsQuery = query(
-              collection(db, 'tickets'),
-              where('projectId', '==', project.id)
-            );
-            const ticketsSnapshot = await getDocs(ticketsQuery);
-            
-            const tickets = ticketsSnapshot.docs.map(doc => ({
-              id: doc.id,
-              ...doc.data(),
-            })) as Ticket[];
-            
-            const totalTickets = tickets.length;
-            const completedTickets = tickets.filter(ticket => ticket.status === 'done').length;
-            const progress = totalTickets > 0 ? Math.round((completedTickets * 100) / totalTickets) : 0;
-            
-            return {
-              ...project,
-              progress,
-              totalTickets,
-              completedTickets,
-            } as ProjectWithProgress;
-          } catch (error) {
-            console.error(`Erro ao buscar tickets do projeto ${project.id}:`, error);
-            return {
-              ...project,
-              progress: 0,
-              totalTickets: 0,
-              completedTickets: 0,
-            } as ProjectWithProgress;
-          }
-        })
+      if (projectsData.length === 0) {
+        setProjects([]);
+        setLoading(false);
+        return;
+      }
+      
+      // Buscar TODOS os tickets de uma vez
+      const projectIds = projectsData.map(p => p.id);
+      const ticketsQuery = query(
+        collection(db, 'tickets'),
+        where('projectId', 'in', projectIds.slice(0, 10)) // Firestore limita 'in' a 10 itens
       );
+      const ticketsSnapshot = await getDocs(ticketsQuery);
+      
+      const allTickets = ticketsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Ticket[];
+      
+      // Agrupar tickets por projeto (no cliente) usando função utilitária
+      const ticketsByProject = getTicketsByProject(allTickets);
+      
+      // Calcular progresso para cada projeto usando função utilitária
+      const projectsWithProgress = projectsData.map(project => {
+        const tickets = ticketsByProject[project.id] || [];
+        const progressData = calculateProjectProgress(tickets);
+        
+        return {
+          ...project,
+          ...progressData,
+        } as ProjectWithProgress;
+      });
       
       // Ordena por data de atualização (mais recente primeiro)
       projectsWithProgress.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
@@ -120,9 +119,10 @@ export default function ProjetosPage() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Carregando projetos...</p>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <ProjectCardSkeleton key={i} />
+            ))}
           </div>
         ) : projects.length === 0 ? (
           <div className="text-center py-12">

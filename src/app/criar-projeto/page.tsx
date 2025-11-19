@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createProject } from '@/lib/services';
+import { createProject, validateSlug } from '@/lib/services';
 import RichTextEditor from '@/components/RichTextEditor';
 
 export default function CriarProjetoPage() {
@@ -36,9 +36,10 @@ export default function CriarProjetoPage() {
       return;
     }
 
-    // Validação do slug
-    if (!/^[a-z0-9-]+$/.test(slug)) {
-      setError('O slug deve conter apenas letras minúsculas, números e hífens');
+    // Validação do slug usando função utilitária
+    const validation = validateSlug(slug);
+    if (!validation.valid) {
+      setError(validation.error || 'Slug inválido');
       return;
     }
 
@@ -46,7 +47,7 @@ export default function CriarProjetoPage() {
 
     try {
       // Descrição agora é HTML do RichTextEditor
-      await createProject(name, description);
+      await createProject(name, slug, description, 'demo-user-id');
       
       // Redireciona para o projeto criado
       router.push(`/${slug}`);

@@ -15,7 +15,7 @@ import { arrayMove } from '@dnd-kit/sortable';
 import KanbanColumn from './KanbanColumn';
 import TicketCard from './TicketCard';
 import { Ticket, TicketStatus } from '@/types';
-import { moveTicket } from '@/lib/services';
+import { moveTicket, reorderTickets } from '@/lib/services';
 
 interface KanbanBoardProps {
   tickets: Ticket[];
@@ -121,13 +121,15 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, on
     if (!activeTicket) return;
 
     let newStatus = activeTicket.status;
-    let newOrder = activeTicket.order;
+    let updatesToApply: Array<{ id: string; order: number; status?: TicketStatus }> = [];
 
     // Se foi dropado sobre uma coluna
     if (columns.some((col) => col.id === overId)) {
       newStatus = overId as TicketStatus;
       const ticketsInColumn = ticketsByStatus[newStatus];
-      newOrder = ticketsInColumn.length > 0 ? ticketsInColumn.length + 1 : 1;
+      const newOrder = ticketsInColumn.length > 0 ? ticketsInColumn.length + 1 : 1;
+      
+      updatesToApply = [{ id: activeId, order: newOrder, status: newStatus }];
     } 
     // Se foi dropado sobre outro ticket
     else if (overTicket) {
@@ -138,31 +140,43 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, on
 
       if (oldIndex !== -1 && newIndex !== -1) {
         const reordered = arrayMove(ticketsInColumn, oldIndex, newIndex);
+        
+        // Prepara batch update para todos os tickets reordenados
+        updatesToApply = reordered.map((ticket, index) => ({
+          id: ticket.id,
+          order: index + 1,
+          status: newStatus,
+        }));
+        
+        // Atualiza estado local
         const updatedTickets = tickets.map((t) => {
-          const indexInReordered = reordered.findIndex((rt) => rt.id === t.id);
-          if (indexInReordered !== -1) {
-            return { ...t, status: newStatus, order: indexInReordered + 1 };
+          const update = updatesToApply.find((u) => u.id === t.id);
+          if (update) {
+            return { ...t, status: update.status!, order: update.order };
           }
           return t;
         });
         onTicketsUpdate(updatedTickets);
         
-        // Atualiza no Firebase
+        // Atualiza no Firebase (batch)
         try {
-          await moveTicket(activeId, newStatus, newIndex + 1);
+          await reorderTickets(updatesToApply);
         } catch (error) {
-          console.error('Erro ao mover ticket:', error);
+          console.error('Erro ao reordenar tickets:', error);
+          // Reverte estado local em caso de erro
+          onTicketsUpdate(tickets);
         }
         return;
       }
     }
 
-    // Atualiza o ticket no Firebase
-    if (activeTicket.status !== newStatus || activeTicket.order !== newOrder) {
+    // Atualiza ticket único
+    if (updatesToApply.length > 0) {
       try {
-        await moveTicket(activeId, newStatus, newOrder);
+        const update = updatesToApply[0];
+        await moveTicket(update.id, update.status!, update.order);
         const updatedTickets = tickets.map((t) =>
-          t.id === activeId ? { ...t, status: newStatus, order: newOrder } : t
+          t.id === update.id ? { ...t, status: update.status!, order: update.order } : t
         );
         onTicketsUpdate(updatedTickets);
       } catch (error) {
