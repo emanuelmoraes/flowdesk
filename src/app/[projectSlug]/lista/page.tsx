@@ -4,14 +4,13 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useProject, useTickets } from '@/hooks/useProject';
-import KanbanBoard from '@/components/KanbanBoard';
+import TicketListView from '@/components/TicketListView';
 import Modal from '@/components/ui/Modal';
 import TicketFormFields from '@/components/forms/TicketFormFields';
-import { KanbanBoardSkeleton } from '@/components/ui/Skeletons';
 import { Ticket, TicketPriority, TicketStatus, TicketType } from '@/types';
 import { createTicket, updateTicket } from '@/lib/services';
 
-export default function ProjectPage() {
+export default function ProjectListPage() {
   const params = useParams();
   const slug = params.projectSlug as string;
   
@@ -32,7 +31,6 @@ export default function ProjectPage() {
     if (!project || !newTicketTitle.trim()) return;
 
     try {
-      // Processa as tags
       const tagsArray = newTicketTags
         .split(',')
         .map(tag => tag.trim())
@@ -48,7 +46,6 @@ export default function ProjectPage() {
         tagsArray
       );
 
-      // Adiciona o novo ticket localmente
       const newTicket: Ticket = {
         id: ticketId,
         title: newTicketTitle,
@@ -65,7 +62,6 @@ export default function ProjectPage() {
 
       setTickets([...tickets, newTicket]);
       
-      // Limpa o formulário
       setNewTicketTitle('');
       setNewTicketDescription('');
       setNewTicketPriority('medium');
@@ -176,15 +172,15 @@ export default function ProjectPage() {
             <div className="flex items-center gap-3">
               {/* Toggle de visualização */}
               <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                <span className="px-3 py-1.5 text-sm font-medium bg-white text-blue-600 rounded-md shadow-sm">
-                  Kanban
-                </span>
                 <Link
-                  href={`/${slug}/lista`}
+                  href={`/${slug}`}
                   className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-md transition-colors"
                 >
-                  Lista
+                  Kanban
                 </Link>
+                <span className="px-3 py-1.5 text-sm font-medium bg-white text-blue-600 rounded-md shadow-sm">
+                  Lista
+                </span>
               </div>
 
               <button
@@ -195,19 +191,24 @@ export default function ProjectPage() {
               </button>
             </div>
           </div>
-          
-          
         </div>
       </header>
 
-      {/* Kanban Board */}
+      {/* Lista de Tickets */}
       <main className="container mx-auto px-4 py-6">
         {ticketsLoading ? (
-          <KanbanBoardSkeleton />
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+            <div className="animate-pulse space-y-4">
+              <div className="h-10 bg-gray-200 rounded w-full"></div>
+              <div className="h-10 bg-gray-200 rounded w-full"></div>
+              <div className="h-10 bg-gray-200 rounded w-full"></div>
+              <div className="h-10 bg-gray-200 rounded w-full"></div>
+              <div className="h-10 bg-gray-200 rounded w-full"></div>
+            </div>
+          </div>
         ) : (
-          <KanbanBoard
+          <TicketListView
             tickets={tickets}
-            onTicketsUpdate={setTickets}
             onEditTicket={handleEditTicket}
           />
         )}
