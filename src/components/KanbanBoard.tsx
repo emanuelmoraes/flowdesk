@@ -1,21 +1,16 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import {
   DndContext,
   DragEndEvent,
-  DragOverEvent,
-  DragOverlay,
-  DragStartEvent,
   PointerSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { arrayMove } from '@dnd-kit/sortable';
 import KanbanColumn from './KanbanColumn';
-import TicketCard from './TicketCard';
 import { Ticket, TicketStatus } from '@/types';
-import { moveTicket, reorderTickets } from '@/lib/services';
+import { moveTicket } from '@/lib/services';
 
 interface KanbanBoardProps {
   tickets: Ticket[];
@@ -33,8 +28,8 @@ const columns: { id: TicketStatus; title: string }[] = [
 ];
 
 export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, onTicketDoubleClick }: KanbanBoardProps) {
-  const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
   const [collapsedColumns, setCollapsedColumns] = useState<Set<TicketStatus>>(new Set());
+  const columnRefs = useRef<Map<TicketStatus, HTMLDivElement>>(new Map());
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -43,6 +38,14 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, on
       },
     })
   );
+
+  const registerColumnRef = useCallback((status: TicketStatus, ref: HTMLDivElement | null) => {
+    if (ref) {
+      columnRefs.current.set(status, ref);
+    } else {
+      columnRefs.current.delete(status);
+    }
+  }, []);
 
   const toggleColumnCollapse = (status: TicketStatus) => {
     setCollapsedColumns(prev => {
@@ -77,110 +80,58 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, on
     return grouped;
   }, [tickets]);
 
-  const handleDragStart = (event: DragStartEvent) => {
-    const ticket = tickets.find((t) => t.id === event.active.id);
-    if (ticket) {
-      setActiveTicket(ticket);
-    }
-  };
-
-  const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeId = active.id as string;
-    const overId = over.id as string;
-
-    const activeTicket = tickets.find((t) => t.id === activeId);
-    if (!activeTicket) return;
-
-    // Se está sobre uma coluna
-    if (columns.some((col) => col.id === overId)) {
-      const newStatus = overId as TicketStatus;
-      if (activeTicket.status !== newStatus) {
-        const updatedTickets = tickets.map((t) =>
-          t.id === activeId ? { ...t, status: newStatus } : t
-        );
-        onTicketsUpdate(updatedTickets);
+  // Detecta qual coluna está sob o ponto usando coordenadas reais
+  const getColumnAtPoint = (x: number, y: number): TicketStatus | null => {
+    for (const [status, element] of columnRefs.current.entries()) {
+      const rect = element.getBoundingClientRect();
+      if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        return status;
       }
     }
+    return null;
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
-    setActiveTicket(null);
 
-    if (!over) return;
-
-    const activeId = active.id as string;
-    const overId = over.id as string;
-
-    const activeTicket = tickets.find((t) => t.id === activeId);
-    const overTicket = tickets.find((t) => t.id === overId);
-
-    if (!activeTicket) return;
-
-    let newStatus = activeTicket.status;
-    let updatesToApply: Array<{ id: string; order: number; status?: TicketStatus }> = [];
-
-    // Se foi dropado sobre uma coluna
-    if (columns.some((col) => col.id === overId)) {
-      newStatus = overId as TicketStatus;
-      const ticketsInColumn = ticketsByStatus[newStatus];
-      const newOrder = ticketsInColumn.length > 0 ? ticketsInColumn.length + 1 : 1;
-      
-      updatesToApply = [{ id: activeId, order: newOrder, status: newStatus }];
-    } 
-    // Se foi dropado sobre outro ticket
-    else if (overTicket) {
-      newStatus = overTicket.status;
-      const ticketsInColumn = ticketsByStatus[newStatus];
-      const oldIndex = ticketsInColumn.findIndex((t) => t.id === activeId);
-      const newIndex = ticketsInColumn.findIndex((t) => t.id === overId);
-
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const reordered = arrayMove(ticketsInColumn, oldIndex, newIndex);
-        
-        // Prepara batch update para todos os tickets reordenados
-        updatesToApply = reordered.map((ticket, index) => ({
-          id: ticket.id,
-          order: index + 1,
-          status: newStatus,
-        }));
-        
-        // Atualiza estado local
-        const updatedTickets = tickets.map((t) => {
-          const update = updatesToApply.find((u) => u.id === t.id);
-          if (update) {
-            return { ...t, status: update.status!, order: update.order };
-          }
-          return t;
-        });
-        onTicketsUpdate(updatedTickets);
-        
-        // Atualiza no Firebase (batch)
-        try {
-          await reorderTickets(updatesToApply);
-        } catch (error) {
-          console.error('Erro ao reordenar tickets:', error);
-          // Reverte estado local em caso de erro
-          onTicketsUpdate(tickets);
-        }
-        return;
-      }
+    // Pega as coordenadas finais do ponteiro
+    const pointerX = (event.activatorEvent as PointerEvent)?.clientX + (event.delta?.x || 0);
+    const pointerY = (event.activatorEvent as PointerEvent)?.clientY + (event.delta?.y || 0);
+    
+    // Detecta a coluna usando coordenadas reais (fallback se over não funcionar)
+    let targetStatus: TicketStatus | null = null;
+    
+    if (over && columns.some(col => col.id === over.id)) {
+      targetStatus = over.id as TicketStatus;
+    } else {
+      // Fallback: detectar manualmente
+      targetStatus = getColumnAtPoint(pointerX, pointerY);
     }
 
-    // Atualiza ticket único
-    if (updatesToApply.length > 0) {
+    console.log('DragEnd - over:', over?.id, 'manual:', targetStatus, 'pointer:', pointerX, pointerY);
+
+    if (!targetStatus) return;
+
+    const activeId = active.id as string;
+    const activeTicket = tickets.find((t) => t.id === activeId);
+    if (!activeTicket) return;
+
+    if (activeTicket.status !== targetStatus) {
+      const ticketsInColumn = ticketsByStatus[targetStatus];
+      const newOrder = ticketsInColumn.length + 1;
+      
+      // Atualiza localmente primeiro para feedback imediato
+      const updatedTickets = tickets.map((t) =>
+        t.id === activeId ? { ...t, status: targetStatus, order: newOrder } : t
+      );
+      onTicketsUpdate(updatedTickets);
+      
       try {
-        const update = updatesToApply[0];
-        await moveTicket(update.id, update.status!, update.order);
-        const updatedTickets = tickets.map((t) =>
-          t.id === update.id ? { ...t, status: update.status!, order: update.order } : t
-        );
-        onTicketsUpdate(updatedTickets);
+        await moveTicket(activeId, targetStatus, newOrder);
       } catch (error) {
         console.error('Erro ao mover ticket:', error);
+        // Reverte em caso de erro
+        onTicketsUpdate(tickets);
       }
     }
   };
@@ -188,12 +139,10 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, on
   return (
     <DndContext
       sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       {/* Desktop: colunas ajustadas com collapse */}
-      <div className="hidden lg:flex gap-4 h-[calc(100vh-200px)] overflow-x-hidden">
+      <div className="hidden lg:flex gap-4 h-[calc(100vh-200px)]">
         {columns.map((column) => (
           <KanbanColumn
             key={column.id}
@@ -204,6 +153,7 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, on
             onTicketDoubleClick={onTicketDoubleClick}
             isCollapsed={collapsedColumns.has(column.id)}
             onToggleCollapse={() => toggleColumnCollapse(column.id)}
+            onRegisterRef={registerColumnRef}
           />
         ))}
       </div>
@@ -218,13 +168,10 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, on
             tickets={ticketsByStatus[column.id]}
             onEditTicket={onEditTicket}
             onTicketDoubleClick={onTicketDoubleClick}
+            onRegisterRef={registerColumnRef}
           />
         ))}
       </div>
-
-      <DragOverlay>
-        {activeTicket ? <TicketCard ticket={activeTicket} /> : null}
-      </DragOverlay>
     </DndContext>
   );
 }

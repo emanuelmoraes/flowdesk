@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { useDraggable } from '@dnd-kit/core';
 import { Ticket } from '@/types';
 import { MdEdit } from 'react-icons/md';
 
@@ -10,6 +9,7 @@ interface TicketCardProps {
   ticket: Ticket;
   onEdit?: (ticket: Ticket) => void;
   onDoubleClick?: (ticket: Ticket) => void;
+  isDragOverlay?: boolean;
 }
 
 const priorityColors = {
@@ -48,21 +48,24 @@ const typeLabels = {
   suporte: 'Suporte',
 };
 
-export default function TicketCard({ ticket, onEdit, onDoubleClick }: TicketCardProps) {
+export default function TicketCard({ ticket, onEdit, onDoubleClick, isDragOverlay = false }: TicketCardProps) {
   const {
     attributes,
     listeners,
     setNodeRef,
     transform,
-    transition,
     isDragging,
-  } = useSortable({ id: ticket.id });
+  } = useDraggable({ id: ticket.id, disabled: isDragOverlay });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
+  // Aplica transform diretamente no elemento durante o arraste
+  const style: React.CSSProperties = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+        zIndex: isDragging ? 9999 : undefined,
+        position: isDragging ? 'relative' : undefined,
+        pointerEvents: isDragging ? 'none' : undefined,
+      }
+    : {};
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -75,7 +78,11 @@ export default function TicketCard({ ticket, onEdit, onDoubleClick }: TicketCard
       style={style}
       {...attributes}
       {...listeners}
-      className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing relative group"
+      className={`bg-white p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow relative group ${
+        isDragging 
+          ? 'shadow-xl border-blue-400 cursor-grabbing' 
+          : 'cursor-grab active:cursor-grabbing'
+      }`}
     >
       {/* Botão de Editar */}
       <button

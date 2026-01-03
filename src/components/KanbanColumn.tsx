@@ -1,8 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import TicketCard from './TicketCard';
 import { Ticket, TicketStatus } from '@/types';
 
@@ -14,6 +13,7 @@ interface KanbanColumnProps {
   onTicketDoubleClick?: (ticket: Ticket) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  onRegisterRef?: (status: TicketStatus, ref: HTMLDivElement | null) => void;
 }
 
 const columnColors: Record<TicketStatus, string> = {
@@ -31,20 +31,31 @@ export default function KanbanColumn({
   onEditTicket, 
   onTicketDoubleClick,
   isCollapsed = false,
-  onToggleCollapse
+  onToggleCollapse,
+  onRegisterRef
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: status,
+    data: {
+      type: 'column',
+      status: status,
+    },
   });
+
+  // Combina os dois refs: o do dnd-kit e o do registro manual
+  const combinedRef = useCallback((node: HTMLDivElement | null) => {
+    setNodeRef(node);
+    onRegisterRef?.(status, node);
+  }, [setNodeRef, onRegisterRef, status]);
 
   return (
     <div
-      ref={setNodeRef}
+      ref={combinedRef}
       className={`${
         isCollapsed ? 'w-16' : 'flex-1 min-w-[300px] lg:min-w-0'
       } rounded-lg border-2 ${columnColors[status]} ${
         isOver ? 'ring-2 ring-blue-500' : ''
-      } transition-all duration-300 overflow-hidden`}
+      } transition-all duration-300`}
     >
       <div className="p-4 h-full flex flex-col">
         <div className="flex items-center justify-between mb-4">
@@ -90,13 +101,11 @@ export default function KanbanColumn({
         </div>
         
         {!isCollapsed && (
-          <SortableContext items={tickets.map(t => t.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-3 flex-1 overflow-y-auto min-h-[200px]">
-              {tickets.map((ticket) => (
-                <TicketCard key={ticket.id} ticket={ticket} onEdit={onEditTicket} onDoubleClick={onTicketDoubleClick} />
-              ))}
-            </div>
-          </SortableContext>
+          <div className="space-y-3 flex-1 min-h-[200px]">
+            {tickets.map((ticket) => (
+              <TicketCard key={ticket.id} ticket={ticket} onEdit={onEditTicket} onDoubleClick={onTicketDoubleClick} />
+            ))}
+          </div>
         )}
       </div>
     </div>

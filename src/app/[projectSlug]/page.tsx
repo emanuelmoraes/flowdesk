@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useProject, useTickets } from '@/hooks/useProject';
-import KanbanBoard from '@/components/KanbanBoard';
+import KanbanBoardNative from '@/components/KanbanBoardNative';
 import Modal from '@/components/ui/Modal';
 import TicketFormFields from '@/components/forms/TicketFormFields';
 import { KanbanBoardSkeleton } from '@/components/ui/Skeletons';
@@ -205,7 +205,7 @@ export default function ProjectPage() {
         {ticketsLoading ? (
           <KanbanBoardSkeleton />
         ) : (
-          <KanbanBoard
+          <KanbanBoardNative
             tickets={tickets}
             onTicketsUpdate={setTickets}
             onEditTicket={handleEditTicket}
