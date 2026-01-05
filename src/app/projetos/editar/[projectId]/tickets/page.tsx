@@ -15,8 +15,19 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Ticket, Project, TicketStatus, TicketPriority, TicketType } from '@/types';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { useNotification } from '@/hooks/useNotification';
+import { logger } from '@/lib/logger';
 
 export default function GerenciarTicketsPage() {
+  return (
+    <ProtectedRoute>
+      <GerenciarTicketsContent />
+    </ProtectedRoute>
+  );
+}
+
+function GerenciarTicketsContent() {
   const router = useRouter();
   const params = useParams();
   const projectId = params.projectId as string;
@@ -68,7 +79,11 @@ export default function GerenciarTicketsPage() {
       ticketsData.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       setTickets(ticketsData);
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+      logger.error('Erro ao carregar dados', {
+        action: 'load_tickets',
+        metadata: { projectId, error: String(error) },
+        page: 'gerenciar_tickets',
+      });
     } finally {
       setLoading(false);
     }
@@ -79,9 +94,17 @@ export default function GerenciarTicketsPage() {
       await deleteDoc(doc(db, 'tickets', ticketId));
       setTickets(tickets.filter(t => t.id !== ticketId));
       setDeleteConfirm(null);
+      logger.success('Ticket deletado', {
+        action: 'delete_ticket',
+        metadata: { ticketId },
+        page: 'gerenciar_tickets',
+      });
     } catch (error) {
-      console.error('Erro ao deletar ticket:', error);
-      alert('Erro ao deletar ticket. Tente novamente.');
+      logger.error('Erro ao deletar ticket', {
+        action: 'delete_ticket',
+        metadata: { ticketId, error: String(error) },
+        page: 'gerenciar_tickets',
+      });
     }
   };
 
@@ -460,8 +483,11 @@ function EditTicketModal({
       });
       onSave();
     } catch (error) {
-      console.error('Erro ao atualizar ticket:', error);
-      alert('Erro ao atualizar ticket. Tente novamente.');
+      logger.error('Erro ao atualizar ticket', {
+        action: 'update_ticket',
+        metadata: { ticketId: ticket.id, error: String(error) },
+        page: 'gerenciar_tickets',
+      });
       setSaving(false);
     }
   };
@@ -653,8 +679,11 @@ function CreateTicketModal({
       await addDoc(collection(db, 'tickets'), newTicket);
       onSave();
     } catch (error) {
-      console.error('Erro ao criar ticket:', error);
-      alert('Erro ao criar ticket. Tente novamente.');
+      logger.error('Erro ao criar ticket', {
+        action: 'create_ticket',
+        metadata: { projectId, error: String(error) },
+        page: 'gerenciar_tickets',
+      });
       setSaving(false);
     }
   };

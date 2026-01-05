@@ -11,6 +11,7 @@ import {
 import KanbanColumn from './KanbanColumn';
 import { Ticket, TicketStatus } from '@/types';
 import { moveTicket } from '@/lib/services';
+import { logger } from '@/lib/logger';
 
 interface KanbanBoardProps {
   tickets: Ticket[];
@@ -108,8 +109,6 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, on
       targetStatus = getColumnAtPoint(pointerX, pointerY);
     }
 
-    console.log('DragEnd - over:', over?.id, 'manual:', targetStatus, 'pointer:', pointerX, pointerY);
-
     if (!targetStatus) return;
 
     const activeId = active.id as string;
@@ -129,7 +128,11 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, on
       try {
         await moveTicket(activeId, targetStatus, newOrder);
       } catch (error) {
-        console.error('Erro ao mover ticket:', error);
+        logger.error('Erro ao mover ticket', {
+          action: 'move_ticket',
+          metadata: { activeId, targetStatus, error: String(error) },
+          page: 'kanban',
+        });
         // Reverte em caso de erro
         onTicketsUpdate(tickets);
       }

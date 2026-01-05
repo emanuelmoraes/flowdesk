@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Ticket, TicketStatus } from '@/types';
 import { moveTicket } from '@/lib/services';
+import { logger } from '@/lib/logger';
 
 interface KanbanBoardProps {
   tickets: Ticket[];
@@ -143,7 +144,11 @@ export default function KanbanBoardNative({ tickets, onTicketsUpdate, onEditTick
     try {
       await moveTicket(ticketId, targetStatus, newOrder);
     } catch (error) {
-      console.error('Erro ao mover ticket:', error);
+      logger.error('Erro ao mover ticket', {
+        action: 'move_ticket',
+        metadata: { ticketId, targetStatus, error: String(error) },
+        page: 'kanban',
+      });
       onTicketsUpdate(tickets);
     }
   };

@@ -4,8 +4,18 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createProject, validateSlug } from '@/lib/services';
 import RichTextEditor from '@/components/RichTextEditor';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { useNotification } from '@/hooks/useNotification';
 
 export default function CriarProjetoPage() {
+  return (
+    <ProtectedRoute>
+      <CriarProjetoContent />
+    </ProtectedRoute>
+  );
+}
+
+function CriarProjetoContent() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');

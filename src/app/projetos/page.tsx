@@ -8,6 +8,10 @@ import { db } from '@/lib/firebase';
 import { Project, Ticket } from '@/types';
 import { ProjectCardSkeleton } from '@/components/ui/Skeletons';
 import { calculateProjectProgress, getTicketsByProject } from '@/lib/services';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { useNotification } from '@/hooks/useNotification';
+import { useAuth } from '@/hooks/useAuth';
+import { logger } from '@/lib/logger';
 
 interface ProjectWithProgress extends Project {
   progress: number;
@@ -16,9 +20,23 @@ interface ProjectWithProgress extends Project {
 }
 
 export default function ProjetosPage() {
+  return (
+    <ProtectedRoute>
+      <ProjetosContent />
+    </ProtectedRoute>
+  );
+}
+
+function ProjetosContent() {
   const router = useRouter();
+  const { signOut, userProfile } = useAuth();
   const [projects, setProjects] = useState<ProjectWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handleLogout = async () => {
+    await signOut();
+    router.push('/login');
+  };
 
   useEffect(() => {
     fetchProjects();
@@ -77,7 +95,11 @@ export default function ProjetosPage() {
       
       setProjects(projectsWithProgress);
     } catch (error) {
-      console.error('Erro ao carregar projetos:', error);
+      logger.error('Erro ao carregar projetos', {
+        action: 'load_projects',
+        metadata: { error: String(error) },
+        page: 'projetos',
+      });
     } finally {
       setLoading(false);
     }
@@ -106,12 +128,30 @@ export default function ProjetosPage() {
               <p className="text-gray-600 mt-1">Gerenciamento de Projetos</p>
             </div>
             
-            <button
-              onClick={() => router.push('/criar-projeto')}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-lg hover:shadow-xl"
-            >
-              + Novo Projeto
-            </button>
+            <div className="flex items-center gap-4">
+              {userProfile && (
+                <span className="text-sm text-gray-600">
+                  Olá, <span className="font-medium">{userProfile.displayName || userProfile.email}</span>
+                </span>
+              )}
+              
+              <button
+                onClick={() => router.push('/criar-projeto')}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-lg hover:shadow-xl"
+              >
+                + Novo Projeto
+              </button>
+              
+              <button
+                onClick={handleLogout}
+                className="text-gray-600 hover:text-red-600 transition-colors px-3 py-2 rounded-lg hover:bg-gray-100"
+                title="Sair"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </header>

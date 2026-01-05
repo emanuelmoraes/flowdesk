@@ -6,8 +6,19 @@ import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Project } from '@/types';
 import RichTextEditor from '@/components/RichTextEditor';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { useNotification } from '@/hooks/useNotification';
+import { logger } from '@/lib/logger';
 
 export default function EditarProjetoPage() {
+  return (
+    <ProtectedRoute>
+      <EditarProjetoContent />
+    </ProtectedRoute>
+  );
+}
+
+function EditarProjetoContent() {
   const router = useRouter();
   const params = useParams();
   const projectId = params.projectId as string;
@@ -45,7 +56,11 @@ export default function EditarProjetoPage() {
         setError('Projeto não encontrado');
       }
     } catch (err) {
-      console.error('Erro ao carregar projeto:', err);
+      logger.error('Erro ao carregar projeto', {
+        action: 'load_project',
+        metadata: { projectId, error: String(err) },
+        page: 'editar_projeto',
+      });
       setError('Erro ao carregar projeto');
     } finally {
       setLoading(false);
@@ -73,7 +88,11 @@ export default function EditarProjetoPage() {
 
       router.push('/projetos');
     } catch (err) {
-      console.error('Erro ao atualizar projeto:', err);
+      logger.error('Erro ao atualizar projeto', {
+        action: 'update_project',
+        metadata: { projectId, error: String(err) },
+        page: 'editar_projeto',
+      });
       setError('Erro ao atualizar projeto. Tente novamente.');
       setSaving(false);
     }
@@ -83,10 +102,18 @@ export default function EditarProjetoPage() {
     try {
       // TODO: Deletar todos os tickets do projeto antes
       await deleteDoc(doc(db, 'projects', projectId));
+      logger.success('Projeto deletado', {
+        action: 'delete_project',
+        metadata: { projectId },
+        page: 'editar_projeto',
+      });
       router.push('/projetos');
     } catch (err) {
-      console.error('Erro ao deletar projeto:', err);
-      alert('Erro ao deletar projeto. Tente novamente.');
+      logger.error('Erro ao deletar projeto', {
+        action: 'delete_project',
+        metadata: { projectId, error: String(err) },
+        page: 'editar_projeto',
+      });
     }
   };
 

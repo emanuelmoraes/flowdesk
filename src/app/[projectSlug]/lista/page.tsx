@@ -9,6 +9,7 @@ import Modal from '@/components/ui/Modal';
 import TicketFormFields from '@/components/forms/TicketFormFields';
 import { Ticket, TicketPriority, TicketStatus, TicketType } from '@/types';
 import { createTicket, updateTicket } from '@/lib/services';
+import { logger } from '@/lib/logger';
 
 export default function ProjectListPage() {
   const params = useParams();
@@ -70,8 +71,11 @@ export default function ProjectListPage() {
       setNewTicketTags('');
       setShowCreateModal(false);
     } catch (error) {
-      console.error('Erro ao criar ticket:', error);
-      alert('Erro ao criar ticket. Tente novamente.');
+      logger.error('Erro ao criar ticket', {
+        action: 'create_ticket',
+        metadata: { projectId: project.id, error: String(error) },
+        page: 'lista',
+      });
     }
   };
 
@@ -128,8 +132,11 @@ export default function ProjectListPage() {
       setNewTicketType('tarefa');
       setNewTicketTags('');
     } catch (error) {
-      console.error('Erro ao atualizar ticket:', error);
-      alert('Erro ao atualizar ticket. Tente novamente.');
+      logger.error('Erro ao atualizar ticket', {
+        action: 'update_ticket',
+        metadata: { ticketId: editingTicket.id, error: String(error) },
+        page: 'lista',
+      });
     }
   };
 

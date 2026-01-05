@@ -10,6 +10,8 @@ import TicketFormFields from '@/components/forms/TicketFormFields';
 import { KanbanBoardSkeleton } from '@/components/ui/Skeletons';
 import { Ticket, TicketPriority, TicketStatus, TicketType } from '@/types';
 import { createTicket, updateTicket } from '@/lib/services';
+import { useNotification } from '@/hooks/useNotification';
+import { logger } from '@/lib/logger';
 
 export default function ProjectPage() {
   const params = useParams();
@@ -74,8 +76,11 @@ export default function ProjectPage() {
       setNewTicketTags('');
       setShowCreateModal(false);
     } catch (error) {
-      console.error('Erro ao criar ticket:', error);
-      alert('Erro ao criar ticket. Tente novamente.');
+      logger.error('Erro ao criar ticket', {
+        action: 'create_ticket',
+        metadata: { projectId: project.id, error: String(error) },
+        page: 'kanban',
+      });
     }
   };
 
@@ -132,8 +137,11 @@ export default function ProjectPage() {
       setNewTicketType('tarefa');
       setNewTicketTags('');
     } catch (error) {
-      console.error('Erro ao atualizar ticket:', error);
-      alert('Erro ao atualizar ticket. Tente novamente.');
+      logger.error('Erro ao atualizar ticket', {
+        action: 'update_ticket',
+        metadata: { ticketId: editingTicket.id, error: String(error) },
+        page: 'kanban',
+      });
     }
   };
 
