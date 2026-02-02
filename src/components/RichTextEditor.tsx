@@ -5,6 +5,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import { useEffect } from 'react';
+import { FaLink } from 'react-icons/fa6';
 
 interface RichTextEditorProps {
   content: string;
@@ -135,12 +136,12 @@ export default function RichTextEditor({ content, onChange, placeholder = 'Digit
         <button
           type="button"
           onClick={setLink}
-          className={`px-3 py-1 rounded hover:bg-gray-200 transition-colors text-sm ${
+          className={`px-3 py-1 rounded hover:bg-gray-200 transition-colors text-sm flex items-center gap-1 ${
             editor.isActive('link') ? 'bg-gray-300' : ''
           }`}
           title="Inserir/Editar link"
         >
-          🔗 Link
+          <FaLink className="inline-block" /> Link
         </button>
 
         {editor.isActive('link') && (

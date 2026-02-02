@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { FaClipboardList, FaLink, FaBolt } from 'react-icons/fa6';
 
 export default function Home() {
   return (
@@ -18,7 +19,9 @@ export default function Home() {
           {/* Features */}
           <div className="grid md:grid-cols-3 gap-8 mb-16">
             <div className="bg-white p-6 rounded-xl shadow-lg">
-              <div className="text-4xl mb-4">📋</div>
+              <div className="text-4xl mb-4 text-blue-600">
+                <FaClipboardList className="mx-auto" />
+              </div>
               <h3 className="text-xl font-semibold mb-2">Kanban Intuitivo</h3>
               <p className="text-gray-600">
                 Arraste e solte seus tickets entre colunas facilmente
@@ -26,7 +29,9 @@ export default function Home() {
             </div>
             
             <div className="bg-white p-6 rounded-xl shadow-lg">
-              <div className="text-4xl mb-4">🔗</div>
+              <div className="text-4xl mb-4 text-blue-600">
+                <FaLink className="mx-auto" />
+              </div>
               <h3 className="text-xl font-semibold mb-2">URL Dedicada</h3>
               <p className="text-gray-600">
                 Cada projeto tem sua própria URL para acesso rápido
@@ -34,7 +39,9 @@ export default function Home() {
             </div>
             
             <div className="bg-white p-6 rounded-xl shadow-lg">
-              <div className="text-4xl mb-4">⚡</div>
+              <div className="text-4xl mb-4 text-yellow-500">
+                <FaBolt className="mx-auto" />
+              </div>
               <h3 className="text-xl font-semibold mb-2">Em Tempo Real</h3>
               <p className="text-gray-600">
                 Powered by Firebase para atualizações instantâneas

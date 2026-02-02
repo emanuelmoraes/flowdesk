@@ -12,6 +12,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { useNotification } from '@/hooks/useNotification';
 import { useAuth } from '@/hooks/useAuth';
 import { logger } from '@/lib/logger';
+import { FaClipboardList } from 'react-icons/fa6';
 
 interface ProjectWithProgress extends Project {
   progress: number;
@@ -166,7 +167,9 @@ function ProjetosContent() {
           </div>
         ) : projects.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">📋</div>
+            <div className="text-6xl mb-4 text-blue-600 flex justify-center">
+              <FaClipboardList />
+            </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Nenhum projeto encontrado</h2>
             <p className="text-gray-600 mb-6">Comece criando seu primeiro projeto!</p>
             <button

@@ -18,6 +18,8 @@ import { Ticket, Project, TicketStatus, TicketPriority, TicketType } from '@/typ
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useNotification } from '@/hooks/useNotification';
 import { logger } from '@/lib/logger';
+import { ticketTypeLabels, ticketTypeIcons } from '@/components/icons/TicketTypeIcons';
+import { FaTicket } from 'react-icons/fa6';
 
 export default function GerenciarTicketsPage() {
   return (
@@ -138,16 +140,7 @@ function GerenciarTicketsContent() {
     'urgent': 'bg-red-200 text-red-800',
   };
 
-  const typeLabels: Record<TicketType, string> = {
-    'bug': '🐛 Bug',
-    'melhoria': '✨ Melhoria',
-    'tarefa': '📋 Tarefa',
-    'estoria': '📖 Estória',
-    'epico': '🎯 Épico',
-    'investigacao': '🔍 Investigação',
-    'novidade': '🚀 Novidade',
-    'suporte': '🛟 Suporte',
-  };
+  // Usa typeLabels importado de TicketTypeIcons
 
   const typeColors: Record<TicketType, string> = {
     'bug': 'bg-red-100 text-red-700',
@@ -263,14 +256,9 @@ function GerenciarTicketsContent() {
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">Todos</option>
-                <option value="bug">🐛 Bug</option>
-                <option value="melhoria">✨ Melhoria</option>
-                <option value="tarefa">📋 Tarefa</option>
-                <option value="estoria">📖 Estória</option>
-                <option value="epico">🎯 Épico</option>
-                <option value="investigacao">🔍 Investigação</option>
-                <option value="novidade">🚀 Novidade</option>
-                <option value="suporte">🛟 Suporte</option>
+                {(Object.entries(ticketTypeLabels) as [TicketType, string][]).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
               </select>
             </div>
 
@@ -285,7 +273,9 @@ function GerenciarTicketsContent() {
       <main className="container mx-auto px-4 py-6">
         {filteredTickets.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg">
-            <div className="text-6xl mb-4">🎫</div>
+            <div className="text-6xl mb-4 text-blue-600 flex justify-center">
+              <FaTicket />
+            </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Nenhum ticket encontrado</h2>
             <p className="text-gray-600">
               {filterStatus !== 'all' || filterPriority !== 'all' || filterType !== 'all'
@@ -533,14 +523,9 @@ function EditTicketModal({
                 onChange={(e) => setType(e.target.value as TicketType)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="bug">🐛 Bug</option>
-                <option value="melhoria">✨ Melhoria</option>
-                <option value="tarefa">📋 Tarefa</option>
-                <option value="estoria">📖 Estória</option>
-                <option value="epico">🎯 Épico</option>
-                <option value="investigacao">🔍 Investigação</option>
-                <option value="novidade">🚀 Novidade</option>
-                <option value="suporte">🛟 Suporte</option>
+                {(Object.entries(ticketTypeLabels) as [TicketType, string][]).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
               </select>
             </div>
 
@@ -732,14 +717,9 @@ function CreateTicketModal({
                 onChange={(e) => setType(e.target.value as TicketType)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               >
-                <option value="bug">🐛 Bug</option>
-                <option value="melhoria">✨ Melhoria</option>
-                <option value="tarefa">📋 Tarefa</option>
-                <option value="estoria">📖 Estória</option>
-                <option value="epico">🎯 Épico</option>
-                <option value="investigacao">🔍 Investigação</option>
-                <option value="novidade">🚀 Novidade</option>
-                <option value="suporte">🛟 Suporte</option>
+                {(Object.entries(ticketTypeLabels) as [TicketType, string][]).map(([key, label]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
               </select>
             </div>
 
