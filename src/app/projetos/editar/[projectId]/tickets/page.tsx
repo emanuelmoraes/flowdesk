@@ -16,7 +16,7 @@ import {
 import { db } from '@/lib/firebase';
 import { Ticket, Project, TicketStatus, TicketPriority, TicketType } from '@/types';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import AppHeader from '@/components/AppHeader';
+import AppLayout from '@/components/AppLayout';
 import { useNotification } from '@/hooks/useNotification';
 import { logger } from '@/lib/logger';
 import { ticketTypeLabels, ticketTypeIcons } from '@/components/icons/TicketTypeIcons';
@@ -184,27 +184,26 @@ function GerenciarTicketsContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader 
-        title="Gerenciar Tickets" 
-        subtitle={project?.name}
-        rightContent={
-          <>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
-            >
-              + Novo Ticket
-            </button>
-            <button
-              onClick={() => router.push(`/projetos/${projectId}`)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            >
-              Ver Kanban
-            </button>
-          </>
-        }
-      />
+    <AppLayout 
+      title="Gerenciar Tickets" 
+      subtitle={project?.name}
+      headerRightContent={
+        <>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
+          >
+            + Novo Ticket
+          </button>
+          <button
+            onClick={() => router.push(`/projetos/${projectId}`)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            Ver Kanban
+          </button>
+        </>
+      }
+    >
 
       {/* Filtros */}
       <div className="bg-white border-b border-gray-200">
@@ -421,7 +420,7 @@ function GerenciarTicketsContent() {
           </div>
         </div>
       )}
-    </div>
+    </AppLayout>
   );
 }
 

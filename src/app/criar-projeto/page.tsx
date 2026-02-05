@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createProject, validateSlug } from '@/lib/services';
 import RichTextEditor from '@/components/RichTextEditor';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import AppHeader from '@/components/AppHeader';
+import AppLayout from '@/components/AppLayout';
 import { useNotification } from '@/hooks/useNotification';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -78,9 +78,7 @@ function CriarProjetoContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader title="Novo Projeto" />
-      
+    <AppLayout title="Novo Projeto">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-md mx-auto">
           <div className="bg-white rounded-xl shadow-lg p-8">
@@ -162,6 +160,6 @@ function CriarProjetoContent() {
         </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }

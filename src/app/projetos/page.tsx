@@ -8,7 +8,7 @@ import { Project, Ticket } from '@/types';
 import { ProjectCardSkeleton } from '@/components/ui/Skeletons';
 import { calculateProjectProgress, getTicketsByProject } from '@/lib/services';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import AppHeader from '@/components/AppHeader';
+import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { logger } from '@/lib/logger';
 import { FaClipboardList } from 'react-icons/fa6';
@@ -118,9 +118,7 @@ function ProjetosContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader showNewProject />
-
+    <AppLayout showNewProject>
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         {loading ? (
@@ -221,6 +219,6 @@ function ProjetosContent() {
           </div>
         )}
       </main>
-    </div>
+    </AppLayout>
   );
 }

@@ -12,7 +12,7 @@ import { Ticket, TicketPriority, TicketStatus, TicketType } from '@/types';
 import { createTicket, updateTicket } from '@/lib/services';
 import { logger } from '@/lib/logger';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import AppHeader from '@/components/AppHeader';
+import AppLayout from '@/components/AppLayout';
 import { FaGear } from 'react-icons/fa6';
 
 export default function ProjectKanbanPage() {
@@ -181,28 +181,27 @@ function ProjectKanbanContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader 
-        title={project.name}
-        subtitle={project.description}
-        rightContent={
-          <>
-            <Link
-              href={`/projetos/editar/${projectId}`}
-              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Configurações do Projeto"
-            >
-              <FaGear className="w-5 h-5" />
-            </Link>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            >
-              + Novo Ticket
-            </button>
-          </>
-        }
-      />
+    <AppLayout 
+      title={project.name}
+      subtitle={project.description}
+      headerRightContent={
+        <>
+          <Link
+            href={`/projetos/editar/${projectId}`}
+            className="p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Configurações do Projeto"
+          >
+            <FaGear className="w-5 h-5" />
+          </Link>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            + Novo Ticket
+          </button>
+        </>
+      }
+    >
 
       {/* Kanban Board */}
       <main className="container mx-auto px-4 py-6">
@@ -298,6 +297,6 @@ function ProjectKanbanContent() {
           </button>
         </div>
       </Modal>
-    </div>
+    </AppLayout>
   );
 }

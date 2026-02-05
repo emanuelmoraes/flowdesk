@@ -16,10 +16,12 @@ FlowDesk is a Kanban project management system built with **Next.js 16** (App Ro
 ## Architecture
 
 ### Routes
+- `/para-voce` - Projetos e tickets recentes (requer autenticação)
 - `/projetos` - Lista de projetos do usuário (requer autenticação)
 - `/projetos/[projectId]` - Kanban do projeto
 - `/projetos/editar/[projectId]` - Configurações do projeto
 - `/criar-projeto` - Criar novo projeto
+- `/planos` - Opções de planos/assinatura
 - `/settings` - Configurações do usuário
 - `/login` - Autenticação (login/cadastro)
 
@@ -105,30 +107,48 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
 - Modals: Use `src/components/ui/Modal.tsx`
 - Loading states: Use `src/components/ui/Skeletons.tsx`
 
-### AppHeader (Header Padrão)
-Todas as páginas autenticadas do projeto devem usar o componente `AppHeader` para manter consistência visual:
+### AppLayout (Layout com Sidebar)
+Todas as páginas autenticadas devem usar o componente `AppLayout` que inclui:
+- **Sidebar** (menu lateral esquerdo colapsável)
+- **AppHeader** (cabeçalho padrão com logo e navegação)
 
 ```tsx
-import AppHeader from '@/components/AppHeader';
+import AppLayout from '@/components/AppLayout';
 
 // Uso básico (página principal /projetos)
-<AppHeader showNewProject />
+<AppLayout showNewProject>
+  {/* Conteúdo da página */}
+</AppLayout>
 
 // Com título e subtítulo (páginas internas)
-<AppHeader title="Nome do Projeto" subtitle="Descrição opcional" />
+<AppLayout title="Nome do Projeto" subtitle="Descrição opcional">
+  {/* Conteúdo da página */}
+</AppLayout>
 
-// Com conteúdo adicional no lado direito
-<AppHeader 
+// Com conteúdo adicional no header
+<AppLayout 
   title="Projeto" 
-  rightContent={<button>Ação</button>}
-/>
+  headerRightContent={<button>Ação</button>}
+>
+  {/* Conteúdo da página */}
+</AppLayout>
 ```
 
 **Props disponíveis:**
-- `title?: string` - Título exibido após o separador
+- `title?: string` - Título exibido no header
 - `subtitle?: string` - Subtítulo abaixo do título
-- `rightContent?: ReactNode` - Elementos adicionais no lado direito
-- `showNewProject?: boolean` - Mostra botão "+ Novo Projeto"
+- `headerRightContent?: ReactNode` - Elementos adicionais no lado direito do header
+- `showNewProject?: boolean` - Mostra botão "+ Novo Projeto" no header
 
-**Exceções:** Páginas de formulário (criar-projeto, editar projeto) usam layout próprio com botão "Voltar".
+### Sidebar (Menu Lateral)
+O `Sidebar` é renderizado automaticamente pelo `AppLayout` e contém:
+- **Para você** (`/para-voce`) - Projetos e tickets recentes
+- **Projetos** (`/projetos`) - Lista de projetos
+- **Planos** (`/planos`) - Opções de planos/assinatura
+
+O estado colapsado é persistido em `localStorage` (chave: `sidebar-collapsed`).
+
+**Larguras:**
+- Expandido: 224px (w-56)
+- Colapsado: 64px (w-16)
 

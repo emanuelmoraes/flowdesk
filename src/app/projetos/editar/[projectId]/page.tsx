@@ -7,7 +7,7 @@ import { db } from '@/lib/firebase';
 import { Project } from '@/types';
 import RichTextEditor from '@/components/RichTextEditor';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import AppHeader from '@/components/AppHeader';
+import AppLayout from '@/components/AppLayout';
 import { useNotification } from '@/hooks/useNotification';
 import { useAuth } from '@/hooks/useAuth';
 import { logger } from '@/lib/logger';
@@ -233,9 +233,7 @@ function EditarProjetoContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader title="Editar Projeto" subtitle={project?.name} />
-      
+    <AppLayout title="Editar Projeto" subtitle={project?.name}>
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           <div className="bg-white rounded-xl shadow-lg p-8">
@@ -457,6 +455,6 @@ function EditarProjetoContent() {
           </div>
         </div>
       )}
-    </div>
+    </AppLayout>
   );
 }

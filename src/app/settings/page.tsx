@@ -7,7 +7,7 @@ import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotification } from '@/hooks/useNotification';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import AppHeader from '@/components/AppHeader';
+import AppLayout from '@/components/AppLayout';
 import { FaUser, FaLock } from 'react-icons/fa6';
 
 export default function SettingsPage() {
@@ -111,9 +111,7 @@ function SettingsContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppHeader title="Configurações" />
-
+    <AppLayout title="Configurações">
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 max-w-2xl">
         {/* Seção: Dados do Perfil */}
@@ -250,6 +248,6 @@ function SettingsContent() {
           </form>
         </section>
       </main>
-    </div>
+    </AppLayout>
   );
 }
