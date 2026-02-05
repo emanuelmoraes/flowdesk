@@ -8,7 +8,10 @@ import { Project } from '@/types';
 import RichTextEditor from '@/components/RichTextEditor';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useNotification } from '@/hooks/useNotification';
+import { useAuth } from '@/hooks/useAuth';
 import { logger } from '@/lib/logger';
+import { getUserByEmail, getUsersByIds, addProjectMember, removeProjectMember } from '@/lib/services';
+import { FaUserPlus, FaTrash, FaCrown } from 'react-icons/fa6';
 
 export default function EditarProjetoPage() {
   return (
@@ -22,6 +25,8 @@ function EditarProjetoContent() {
   const router = useRouter();
   const params = useParams();
   const projectId = params.projectId as string;
+  const { user } = useAuth();
+  const { showSuccess, showError } = useNotification();
 
   const [project, setProject] = useState<Project | null>(null);
   const [name, setName] = useState('');
@@ -31,10 +36,28 @@ function EditarProjetoContent() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [error, setError] = useState('');
 
+  // Estados para gerenciamento de membros
+  const [members, setMembers] = useState<Array<{ id: string; email: string; displayName: string }>>([]);
+  const [newMemberEmail, setNewMemberEmail] = useState('');
+  const [addingMember, setAddingMember] = useState(false);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+
   useEffect(() => {
     fetchProject();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
+
+  // Carrega membros quando o projeto muda
+  useEffect(() => {
+    if (project?.members) {
+      fetchMembers(project.members);
+    }
+  }, [project?.members]);
+
+  const fetchMembers = async (memberIds: string[]) => {
+    const membersData = await getUsersByIds(memberIds);
+    setMembers(membersData);
+  };
 
   const fetchProject = async () => {
     try {
@@ -114,6 +137,69 @@ function EditarProjetoContent() {
         metadata: { projectId, error: String(err) },
         page: 'editar_projeto',
       });
+    }
+  };
+
+  const handleAddMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newMemberEmail.trim()) return;
+    
+    setAddingMember(true);
+    try {
+      // Busca o usuário pelo email
+      const foundUser = await getUserByEmail(newMemberEmail);
+      
+      if (!foundUser) {
+        showError('Usuário não encontrado. Verifique o email.');
+        return;
+      }
+      
+      if (foundUser.id === user?.uid) {
+        showError('Você já é membro deste projeto.');
+        return;
+      }
+      
+      // Adiciona o membro
+      await addProjectMember(projectId, foundUser.id);
+      
+      // Atualiza a lista local de membros
+      setMembers(prev => [...prev, foundUser]);
+      setProject(prev => prev ? { 
+        ...prev, 
+        members: [...(prev.members || []), foundUser.id] 
+      } : null);
+      
+      setNewMemberEmail('');
+      showSuccess(`${foundUser.displayName} foi adicionado ao projeto!`);
+    } catch (err) {
+      const error = err as Error;
+      showError(error.message || 'Erro ao adicionar membro.');
+    } finally {
+      setAddingMember(false);
+    }
+  };
+
+  const handleRemoveMember = async (memberId: string, memberName: string) => {
+    if (!project) return;
+    
+    setRemovingMemberId(memberId);
+    try {
+      await removeProjectMember(projectId, memberId, project.ownerId);
+      
+      // Atualiza a lista local de membros
+      setMembers(prev => prev.filter(m => m.id !== memberId));
+      setProject(prev => prev ? { 
+        ...prev, 
+        members: (prev.members || []).filter(id => id !== memberId) 
+      } : null);
+      
+      showSuccess(`${memberName} foi removido do projeto.`);
+    } catch (err) {
+      const error = err as Error;
+      showError(error.message || 'Erro ao remover membro.');
+    } finally {
+      setRemovingMemberId(null);
     }
   };
 
@@ -255,6 +341,82 @@ function EditarProjetoContent() {
                 >
                   Gerenciar Tickets
                 </button>
+              </div>
+            </div>
+
+            {/* Gerenciar Membros */}
+            <div className="mt-8 pt-8 border-t border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Membros do Projeto</h2>
+              <p className="text-gray-600 text-sm mb-4">
+                Adicione pessoas para colaborar neste projeto.
+              </p>
+              
+              {/* Formulário para adicionar membro */}
+              <form onSubmit={handleAddMember} className="flex gap-2 mb-4">
+                <input
+                  type="email"
+                  value={newMemberEmail}
+                  onChange={(e) => setNewMemberEmail(e.target.value)}
+                  placeholder="Digite o email do usuário"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <button
+                  type="submit"
+                  disabled={addingMember || !newMemberEmail.trim()}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <FaUserPlus className="w-4 h-4" />
+                  {addingMember ? 'Adicionando...' : 'Adicionar'}
+                </button>
+              </form>
+
+              {/* Lista de membros */}
+              <div className="space-y-2">
+                {members.length === 0 ? (
+                  <p className="text-gray-500 text-sm py-2">Nenhum membro encontrado.</p>
+                ) : (
+                  members.map((member) => (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-600 font-semibold text-sm">
+                            {member.displayName?.charAt(0).toUpperCase() || member.email.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900 flex items-center gap-2">
+                            {member.displayName}
+                            {member.id === project?.ownerId && (
+                              <span className="text-yellow-600" title="Dono do projeto">
+                                <FaCrown className="w-4 h-4" />
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-sm text-gray-500">{member.email}</p>
+                        </div>
+                      </div>
+                      
+                      {/* Botão remover (não aparece para o dono) */}
+                      {member.id !== project?.ownerId && (
+                        <button
+                          onClick={() => handleRemoveMember(member.id, member.displayName)}
+                          disabled={removingMemberId === member.id}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                          title="Remover membro"
+                        >
+                          {removingMemberId === member.id ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                          ) : (
+                            <FaTrash className="w-4 h-4" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 

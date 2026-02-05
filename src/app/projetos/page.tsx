@@ -31,7 +31,7 @@ export default function ProjetosPage() {
 
 function ProjetosContent() {
   const router = useRouter();
-  const { signOut, userProfile } = useAuth();
+  const { signOut, userProfile, user } = useAuth();
   const [projects, setProjects] = useState<ProjectWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,15 +41,22 @@ function ProjetosContent() {
   };
 
   useEffect(() => {
-    fetchProjects();
-  }, []);
+    if (user) {
+      fetchProjects();
+    }
+  }, [user]);
 
   const fetchProjects = async () => {
+    if (!user) return;
+    
     try {
       setLoading(true);
       
-      // Buscar todos os projetos
-      const projectsQuery = query(collection(db, 'projects'));
+      // Buscar projetos onde o usuário é membro
+      const projectsQuery = query(
+        collection(db, 'projects'),
+        where('members', 'array-contains', user.uid)
+      );
       const projectsSnapshot = await getDocs(projectsQuery);
       
       const projectsData = projectsSnapshot.docs.map(doc => ({

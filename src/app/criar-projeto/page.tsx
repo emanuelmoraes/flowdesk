@@ -6,6 +6,7 @@ import { createProject, validateSlug } from '@/lib/services';
 import RichTextEditor from '@/components/RichTextEditor';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useNotification } from '@/hooks/useNotification';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function CriarProjetoPage() {
   return (
@@ -17,6 +18,8 @@ export default function CriarProjetoPage() {
 
 function CriarProjetoContent() {
   const router = useRouter();
+  const { user } = useAuth();
+  const { showError } = useNotification();
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
@@ -56,8 +59,13 @@ function CriarProjetoContent() {
     setLoading(true);
 
     try {
+      if (!user) {
+        showError('Você precisa estar logado para criar um projeto.');
+        return;
+      }
+
       // Descrição agora é HTML do RichTextEditor
-      await createProject(name, slug, description, 'demo-user-id');
+      await createProject(name, slug, description, user.uid);
       
       // Redireciona para o projeto criado
       router.push(`/${slug}`);

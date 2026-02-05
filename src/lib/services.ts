@@ -230,3 +230,127 @@ export const validateSlug = (slug: string): { valid: boolean; error?: string } =
   
   return { valid: true };
 };
+
+// === Funções para Gerenciamento de Membros ===
+
+/**
+ * Busca um usuário pelo email
+ */
+export const getUserByEmail = async (email: string): Promise<{
+  id: string;
+  email: string;
+  displayName: string;
+} | null> => {
+  try {
+    const q = query(collection(db, 'users'), where('email', '==', email.toLowerCase().trim()));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      return null;
+    }
+    
+    const userDoc = querySnapshot.docs[0];
+    const data = userDoc.data();
+    
+    return {
+      id: userDoc.id,
+      email: data.email,
+      displayName: data.displayName || data.email.split('@')[0],
+    };
+  } catch {
+    throw new Error('Erro ao buscar usuário');
+  }
+};
+
+/**
+ * Busca informações de múltiplos usuários pelos IDs
+ */
+export const getUsersByIds = async (userIds: string[]): Promise<Array<{
+  id: string;
+  email: string;
+  displayName: string;
+}>> => {
+  if (!userIds.length) return [];
+  
+  try {
+    const users: Array<{ id: string; email: string; displayName: string }> = [];
+    
+    // Busca cada usuário individualmente (Firestore não suporta 'in' com mais de 10 itens)
+    for (const userId of userIds.slice(0, 10)) {
+      const userDoc = await getDocs(query(collection(db, 'users'), where('__name__', '==', userId)));
+      if (!userDoc.empty) {
+        const doc = userDoc.docs[0];
+        const data = doc.data();
+        users.push({
+          id: doc.id,
+          email: data.email,
+          displayName: data.displayName || data.email?.split('@')[0] || 'Usuário',
+        });
+      }
+    }
+    
+    return users;
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Adiciona um membro ao projeto
+ */
+export const addProjectMember = async (projectId: string, userId: string): Promise<void> => {
+  try {
+    const projectRef = doc(db, 'projects', projectId);
+    const projectDoc = await getDocs(query(collection(db, 'projects'), where('__name__', '==', projectId)));
+    
+    if (projectDoc.empty) {
+      throw new Error('Projeto não encontrado');
+    }
+    
+    const project = projectDoc.docs[0].data();
+    const members = project.members || [];
+    
+    if (members.includes(userId)) {
+      throw new Error('Usuário já é membro deste projeto');
+    }
+    
+    await updateDoc(projectRef, {
+      members: [...members, userId],
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    throw error;
+  }
+};
+
+/**
+ * Remove um membro do projeto
+ */
+export const removeProjectMember = async (
+  projectId: string, 
+  userId: string, 
+  ownerId: string
+): Promise<void> => {
+  try {
+    if (userId === ownerId) {
+      throw new Error('Não é possível remover o dono do projeto');
+    }
+    
+    const projectRef = doc(db, 'projects', projectId);
+    const projectDoc = await getDocs(query(collection(db, 'projects'), where('__name__', '==', projectId)));
+    
+    if (projectDoc.empty) {
+      throw new Error('Projeto não encontrado');
+    }
+    
+    const project = projectDoc.docs[0].data();
+    const members = (project.members || []).filter((id: string) => id !== userId);
+    
+    await updateDoc(projectRef, {
+      members,
+      updatedAt: serverTimestamp(),
+    });
+  } catch (error) {
+    throw error;
+  }
+};
