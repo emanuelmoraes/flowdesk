@@ -4,11 +4,52 @@ import {
   collection, 
   query, 
   where, 
-  getDocs
+  getDocs,
+  doc,
+  getDoc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Project, Ticket } from '@/types';
 
+// Hook para buscar projeto por ID
+export const useProjectById = (projectId: string) => {
+  const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProject = async () => {
+      try {
+        setLoading(true);
+        const docRef = doc(db, 'projects', projectId);
+        const docSnap = await getDoc(docRef);
+        
+        if (docSnap.exists()) {
+          setProject({
+            id: docSnap.id,
+            ...docSnap.data(),
+            createdAt: docSnap.data().createdAt?.toDate(),
+            updatedAt: docSnap.data().updatedAt?.toDate(),
+          } as Project);
+        } else {
+          setError('Projeto não encontrado');
+        }
+      } catch {
+        setError('Erro ao carregar projeto');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (projectId) {
+      fetchProject();
+    }
+  }, [projectId]);
+
+  return { project, loading, error };
+};
+
+// Hook para buscar projeto por slug (legacy - pode ser removido futuramente)
 export const useProject = (slug: string) => {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);

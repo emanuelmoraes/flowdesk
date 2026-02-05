@@ -140,7 +140,8 @@ function GerenciarTicketsContent() {
     'urgent': 'bg-red-200 text-red-800',
   };
 
-  // Usa typeLabels importado de TicketTypeIcons
+  // Alias para typeLabels
+  const typeLabels = ticketTypeLabels;
 
   const typeColors: Record<TicketType, string> = {
     'bug': 'bg-red-100 text-red-700',

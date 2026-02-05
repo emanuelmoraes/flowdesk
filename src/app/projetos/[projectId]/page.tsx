@@ -3,31 +3,32 @@
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useState } from 'react';
-import { useProject, useTickets } from '@/hooks/useProject';
+import { useProjectById, useTickets } from '@/hooks/useProject';
 import KanbanBoardNative from '@/components/KanbanBoardNative';
 import Modal from '@/components/ui/Modal';
 import TicketFormFields from '@/components/forms/TicketFormFields';
 import { KanbanBoardSkeleton } from '@/components/ui/Skeletons';
 import { Ticket, TicketPriority, TicketStatus, TicketType } from '@/types';
 import { createTicket, updateTicket } from '@/lib/services';
-import { useNotification } from '@/hooks/useNotification';
 import { logger } from '@/lib/logger';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import AppHeader from '@/components/AppHeader';
+import { FaGear } from 'react-icons/fa6';
 
-export default function ProjectPage() {
+export default function ProjectKanbanPage() {
   return (
     <ProtectedRoute>
-      <ProjectPageContent />
+      <ProjectKanbanContent />
     </ProtectedRoute>
   );
 }
 
-function ProjectPageContent() {
+function ProjectKanbanContent() {
   const params = useParams();
-  const slug = params.projectSlug as string;
+  const projectId = params.projectId as string;
   
-  const { project, loading: projectLoading, error } = useProject(slug);
-  const { tickets, loading: ticketsLoading, setTickets } = useTickets(project?.id || '');
+  const { project, loading: projectLoading, error } = useProjectById(projectId);
+  const { tickets, loading: ticketsLoading, setTickets } = useTickets(projectId);
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -171,8 +172,8 @@ function ProjectPageContent() {
         <div className="text-center">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
           <p className="text-xl text-gray-600 mb-8">Projeto não encontrado</p>
-          <Link href="/" className="text-blue-600 hover:underline">
-            Voltar para home
+          <Link href="/projetos" className="text-blue-600 hover:underline">
+            Voltar para projetos
           </Link>
         </div>
       </div>
@@ -181,41 +182,27 @@ function ProjectPageContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
-              <p className="text-sm text-gray-500">flowdesk.com/{slug}</p>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              {/* Toggle de visualização */}
-              <div className="flex items-center bg-gray-100 rounded-lg p-1">
-                <span className="px-3 py-1.5 text-sm font-medium bg-white text-blue-600 rounded-md shadow-sm">
-                  Kanban
-                </span>
-                <Link
-                  href={`/${slug}/lista`}
-                  className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 rounded-md transition-colors"
-                >
-                  Lista
-                </Link>
-              </div>
-
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                + Novo Ticket
-              </button>
-            </div>
-          </div>
-          
-          
-        </div>
-      </header>
+      <AppHeader 
+        title={project.name}
+        subtitle={project.description}
+        rightContent={
+          <>
+            <Link
+              href={`/projetos/editar/${projectId}`}
+              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Configurações do Projeto"
+            >
+              <FaGear className="w-5 h-5" />
+            </Link>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              + Novo Ticket
+            </button>
+          </>
+        }
+      />
 
       {/* Kanban Board */}
       <main className="container mx-auto px-4 py-6">

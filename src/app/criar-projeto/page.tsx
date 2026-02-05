@@ -65,10 +65,10 @@ function CriarProjetoContent() {
       }
 
       // Descrição agora é HTML do RichTextEditor
-      await createProject(name, slug, description, user.uid);
+      const projectId = await createProject(name, slug, description, user.uid);
       
       // Redireciona para o projeto criado
-      router.push(`/${slug}`);
+      router.push(`/projetos/${projectId}`);
     } catch (error: unknown) {
       const err = error as Error;
       setError(err.message || 'Erro ao criar projeto. Tente novamente.');

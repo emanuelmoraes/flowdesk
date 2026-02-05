@@ -11,7 +11,17 @@
 - **Dúvidas**: Perguntar ao usuário quando houver incertezas antes de prosseguir
 
 ## Project Overview
-FlowDesk is a Kanban project management system built with **Next.js 16** (App Router), **TypeScript**, **Firebase** (Firestore + Auth), and **Tailwind CSS 4**. Each project has a dedicated URL (`/[projectSlug]`) and features drag-and-drop using `@dnd-kit`.
+FlowDesk is a Kanban project management system built with **Next.js 16** (App Router), **TypeScript**, **Firebase** (Firestore + Auth), and **Tailwind CSS 4**. Projects are accessed via `/projetos/[projectId]` (authenticated) and features drag-and-drop using `@dnd-kit`.
+
+## Architecture
+
+### Routes
+- `/projetos` - Lista de projetos do usuário (requer autenticação)
+- `/projetos/[projectId]` - Kanban do projeto
+- `/projetos/editar/[projectId]` - Configurações do projeto
+- `/criar-projeto` - Criar novo projeto
+- `/settings` - Configurações do usuário
+- `/login` - Autenticação (login/cadastro)
 
 ## Architecture
 
@@ -94,3 +104,31 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
 - Drag-and-drop: Use `@dnd-kit/core` hooks (`useDraggable`, `useDroppable`)
 - Modals: Use `src/components/ui/Modal.tsx`
 - Loading states: Use `src/components/ui/Skeletons.tsx`
+
+### AppHeader (Header Padrão)
+Todas as páginas autenticadas do projeto devem usar o componente `AppHeader` para manter consistência visual:
+
+```tsx
+import AppHeader from '@/components/AppHeader';
+
+// Uso básico (página principal /projetos)
+<AppHeader showNewProject />
+
+// Com título e subtítulo (páginas internas)
+<AppHeader title="Nome do Projeto" subtitle="Descrição opcional" />
+
+// Com conteúdo adicional no lado direito
+<AppHeader 
+  title="Projeto" 
+  rightContent={<button>Ação</button>}
+/>
+```
+
+**Props disponíveis:**
+- `title?: string` - Título exibido após o separador
+- `subtitle?: string` - Subtítulo abaixo do título
+- `rightContent?: ReactNode` - Elementos adicionais no lado direito
+- `showNewProject?: boolean` - Mostra botão "+ Novo Projeto"
+
+**Exceções:** Páginas de formulário (criar-projeto, editar projeto) usam layout próprio com botão "Voltar".
+

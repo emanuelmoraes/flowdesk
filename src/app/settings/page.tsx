@@ -1,15 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotification } from '@/hooks/useNotification';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { FaArrowLeft, FaUser, FaLock } from 'react-icons/fa6';
+import AppHeader from '@/components/AppHeader';
+import { FaUser, FaLock } from 'react-icons/fa6';
 
 export default function SettingsPage() {
   return (
@@ -20,7 +19,6 @@ export default function SettingsPage() {
 }
 
 function SettingsContent() {
-  const router = useRouter();
   const { user, userProfile } = useAuth();
   const { showSuccess, showError } = useNotification();
 
@@ -114,26 +112,7 @@ function SettingsContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push('/projetos')}
-              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Voltar"
-            >
-              <FaArrowLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <Link href="/" className="text-3xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
-                Flow<span className="text-blue-600">Desk</span>
-              </Link>
-              <p className="text-gray-600 mt-1">Configurações</p>
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader title="Configurações" />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 max-w-2xl">

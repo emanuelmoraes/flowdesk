@@ -2,18 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { collection, query, getDocs, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Project, Ticket } from '@/types';
 import { ProjectCardSkeleton } from '@/components/ui/Skeletons';
 import { calculateProjectProgress, getTicketsByProject } from '@/lib/services';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import NotificationBell from '@/components/NotificationBell';
-import { useNotification } from '@/hooks/useNotification';
+import AppHeader from '@/components/AppHeader';
 import { useAuth } from '@/hooks/useAuth';
 import { logger } from '@/lib/logger';
-import { FaClipboardList, FaGear } from 'react-icons/fa6';
+import { FaClipboardList } from 'react-icons/fa6';
 
 interface ProjectWithProgress extends Project {
   progress: number;
@@ -31,14 +29,9 @@ export default function ProjetosPage() {
 
 function ProjetosContent() {
   const router = useRouter();
-  const { signOut, userProfile, user } = useAuth();
+  const { user } = useAuth();
   const [projects, setProjects] = useState<ProjectWithProgress[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const handleLogout = async () => {
-    await signOut();
-    router.push('/login');
-  };
 
   useEffect(() => {
     if (user) {
@@ -126,54 +119,7 @@ function ProjetosContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <Link href="/" className="text-3xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
-                Flow<span className="text-blue-600">Desk</span>
-              </Link>
-              <p className="text-gray-600 mt-1">Gerenciamento de Projetos</p>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              {userProfile && (
-                <span className="text-sm text-gray-600">
-                  Olá, <span className="font-medium">{userProfile.displayName || userProfile.email}</span>
-                </span>
-              )}
-              
-              <NotificationBell />
-              
-              <button
-                onClick={() => router.push('/settings')}
-                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Configurações"
-              >
-                <FaGear className="w-5 h-5" />
-              </button>
-              
-              <button
-                onClick={() => router.push('/criar-projeto')}
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-lg hover:shadow-xl"
-              >
-                + Novo Projeto
-              </button>
-              
-              <button
-                onClick={handleLogout}
-                className="text-gray-600 hover:text-red-600 transition-colors px-3 py-2 rounded-lg hover:bg-gray-100"
-                title="Sair"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader showNewProject />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
@@ -210,10 +156,12 @@ function ProjetosContent() {
                     {project.name}
                   </h3>
                   
-                  {/* URL do Projeto */}
-                  <p className="text-sm text-blue-600 font-mono mb-3 truncate">
-                    flowdesk.com/{project.slug}
-                  </p>
+                  {/* Descrição do Projeto */}
+                  {project.description && (
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                      {project.description}
+                    </p>
+                  )}
                   
                   {/* Progresso do Projeto */}
                   <div className="mb-4">
@@ -260,14 +208,12 @@ function ProjetosContent() {
                       Editar
                     </button>
                     
-                    <a
-                      href={`/${project.slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm text-center inline-block"
+                    <button
+                      onClick={() => router.push(`/projetos/${project.id}`)}
+                      className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
                     >
                       Tickets
-                    </a>
+                    </button>
                   </div>
                 </div>
               </div>
