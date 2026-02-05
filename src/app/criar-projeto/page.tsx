@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createProject, validateSlug } from '@/lib/services';
 import RichTextEditor from '@/components/RichTextEditor';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import AppHeader from '@/components/AppHeader';
 import { useNotification } from '@/hooks/useNotification';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -77,27 +78,12 @@ function CriarProjetoContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        {/* Botão Voltar */}
-        <button
-          onClick={() => router.push('/projetos')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-        >
-          <span className="text-xl">←</span>
-          <span className="font-medium">Voltar para projetos</span>
-        </button>
-
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Criar Novo Projeto
-          </h1>
-          <p className="text-gray-600">
-            Configure seu projeto e comece a organizar suas tarefas
-          </p>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-lg p-8">
+    <div className="min-h-screen bg-gray-50">
+      <AppHeader title="Novo Projeto" />
+      
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-md mx-auto">
+          <div className="bg-white rounded-xl shadow-lg p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
@@ -174,11 +160,7 @@ function CriarProjetoContent() {
             </div>
           </form>
         </div>
-
-        <p className="text-center text-sm text-gray-500 mt-6">
-          Após criar, você poderá acessar seu projeto em<br />
-          <span className="font-mono text-blue-600">flowdesk.com/{slug || 'seu-projeto'}</span>
-        </p>
+        </div>
       </div>
     </div>
   );

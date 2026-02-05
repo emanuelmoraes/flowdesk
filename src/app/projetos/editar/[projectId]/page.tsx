@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase';
 import { Project } from '@/types';
 import RichTextEditor from '@/components/RichTextEditor';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import AppHeader from '@/components/AppHeader';
 import { useNotification } from '@/hooks/useNotification';
 import { useAuth } from '@/hooks/useAuth';
 import { logger } from '@/lib/logger';
@@ -232,23 +233,12 @@ function EditarProjetoContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gray-50">
+      <AppHeader title="Editar Projeto" subtitle={project?.name} />
+      
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
-          {/* Botão Voltar */}
-          <button
-            onClick={() => router.push('/projetos')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-          >
-            <span className="text-xl">←</span>
-            <span className="font-medium">Voltar para projetos</span>
-          </button>
-
           <div className="bg-white rounded-xl shadow-lg p-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Editar Projeto</h1>
-            <p className="text-gray-600 mb-6">
-              Altere as informações do seu projeto
-            </p>
 
             <form onSubmit={handleSave} className="space-y-6">
               {/* Nome do Projeto */}

@@ -16,6 +16,7 @@ import {
 import { db } from '@/lib/firebase';
 import { Ticket, Project, TicketStatus, TicketPriority, TicketType } from '@/types';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import AppHeader from '@/components/AppHeader';
 import { useNotification } from '@/hooks/useNotification';
 import { logger } from '@/lib/logger';
 import { ticketTypeLabels, ticketTypeIcons } from '@/components/icons/TicketTypeIcons';
@@ -184,40 +185,31 @@ function GerenciarTicketsContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <button
-                onClick={() => router.push(`/projetos/editar/${projectId}`)}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-2 transition-colors"
-              >
-                <span className="text-xl">←</span>
-                <span className="font-medium">Voltar para edição</span>
-              </button>
-              <h1 className="text-2xl font-bold text-gray-900">{project?.name}</h1>
-              <p className="text-sm text-gray-500">Gerenciamento de Tickets</p>
-            </div>
-            
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
-              >
-                + Novo Ticket
-              </button>
-              <button
-                onClick={() => router.push(`/${project?.slug}`)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                Ver Kanban
-              </button>
-            </div>
-          </div>
+      <AppHeader 
+        title="Gerenciar Tickets" 
+        subtitle={project?.name}
+        rightContent={
+          <>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
+            >
+              + Novo Ticket
+            </button>
+            <button
+              onClick={() => router.push(`/projetos/${projectId}`)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              Ver Kanban
+            </button>
+          </>
+        }
+      />
 
-          {/* Filtros */}
-          <div className="flex gap-4">
+      {/* Filtros */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex gap-4 flex-wrap">
             <div>
               <label className="text-sm font-medium text-gray-700 mr-2">Status:</label>
               <select
@@ -268,7 +260,7 @@ function GerenciarTicketsContent() {
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Lista de Tickets */}
       <main className="container mx-auto px-4 py-6">
