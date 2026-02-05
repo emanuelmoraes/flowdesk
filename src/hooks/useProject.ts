@@ -35,9 +35,8 @@ export const useProject = (slug: string) => {
         } else {
           setError('Projeto não encontrado');
         }
-      } catch (err) {
+      } catch {
         setError('Erro ao carregar projeto');
-        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -78,8 +77,8 @@ export const useTickets = (projectId: string) => {
         ticketsData.sort((a, b) => a.order - b.order);
         
         setTickets(ticketsData);
-      } catch (err) {
-        console.error('Erro ao carregar tickets:', err);
+      } catch {
+        // Falha silenciosa - erros são tratados pela UI
       } finally {
         setLoading(false);
       }

@@ -1,25 +1,19 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import toast, { Toaster } from 'react-hot-toast';
 import { logger, LogLevel } from '@/lib/logger';
 
-export interface Toast {
-  id: string;
-  type: 'success' | 'error' | 'warning' | 'info';
-  message: string;
-  duration?: number;
-}
-
 interface NotificationContextType {
-  toasts: Toast[];
-  showToast: (type: Toast['type'], message: string, options?: ToastOptions) => void;
+  showToast: (type: ToastType, message: string, options?: ToastOptions) => void;
   showSuccess: (message: string, options?: ToastOptions) => void;
   showError: (message: string, options?: ToastOptions) => void;
   showWarning: (message: string, options?: ToastOptions) => void;
   showInfo: (message: string, options?: ToastOptions) => void;
-  removeToast: (id: string) => void;
   confirm: (message: string, options?: ConfirmOptions) => Promise<boolean>;
 }
+
+type ToastType = 'success' | 'error' | 'warning' | 'info';
 
 interface ToastOptions {
   duration?: number;
@@ -39,7 +33,6 @@ interface ConfirmOptions {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const [confirmState, setConfirmState] = useState<{
     isOpen: boolean;
     message: string;
@@ -47,24 +40,43 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     resolve?: (value: boolean) => void;
   }>({ isOpen: false, message: '' });
 
-  const removeToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  }, []);
-
   const showToast = useCallback((
-    type: Toast['type'],
+    type: ToastType,
     message: string,
     options: ToastOptions = {}
   ) => {
-    const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const duration = options.duration ?? 5000;
+    const duration = options.duration ?? 4000;
 
-    const newToast: Toast = { id, type, message, duration };
-    setToasts((prev) => [...prev, newToast]);
-
-    // Remove automaticamente após a duração
-    if (duration > 0) {
-      setTimeout(() => removeToast(id), duration);
+    // Exibe o toast usando react-hot-toast
+    switch (type) {
+      case 'success':
+        toast.success(message, { duration });
+        break;
+      case 'error':
+        toast.error(message, { duration });
+        break;
+      case 'warning':
+        toast(message, { 
+          duration,
+          icon: '⚠️',
+          style: {
+            background: '#FEF3C7',
+            color: '#92400E',
+            border: '1px solid #F59E0B',
+          },
+        });
+        break;
+      case 'info':
+        toast(message, { 
+          duration,
+          icon: 'ℹ️',
+          style: {
+            background: '#DBEAFE',
+            color: '#1E40AF',
+            border: '1px solid #3B82F6',
+          },
+        });
+        break;
     }
 
     // Salva log no Firestore (se não for skipLog)
@@ -81,7 +93,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         userId: options.userId,
       });
     }
-  }, [removeToast]);
+  }, []);
 
   const showSuccess = useCallback((message: string, options?: ToastOptions) => {
     showToast('success', message, options);
@@ -118,24 +130,42 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   return (
     <NotificationContext.Provider
       value={{
-        toasts,
         showToast,
         showSuccess,
         showError,
         showWarning,
         showInfo,
-        removeToast,
         confirm,
       }}
     >
       {children}
 
-      {/* Toast Container */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
-        {toasts.map((toast) => (
-          <ToastItem key={toast.id} toast={toast} onClose={() => removeToast(toast.id)} />
-        ))}
-      </div>
+      {/* React Hot Toast Container */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            borderRadius: '8px',
+            padding: '12px 16px',
+            fontSize: '14px',
+          },
+          success: {
+            style: {
+              background: '#ECFDF5',
+              color: '#065F46',
+              border: '1px solid #10B981',
+            },
+          },
+          error: {
+            style: {
+              background: '#FEF2F2',
+              color: '#991B1B',
+              border: '1px solid #EF4444',
+            },
+          },
+        }}
+      />
 
       {/* Confirm Modal */}
       {confirmState.isOpen && (
@@ -163,56 +193,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         </div>
       )}
     </NotificationContext.Provider>
-  );
-}
-
-// Componente Toast individual
-function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
-  const styles = {
-    success: 'bg-green-50 border-green-500 text-green-800',
-    error: 'bg-red-50 border-red-500 text-red-800',
-    warning: 'bg-yellow-50 border-yellow-500 text-yellow-800',
-    info: 'bg-blue-50 border-blue-500 text-blue-800',
-  };
-
-  const icons = {
-    success: (
-      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-      </svg>
-    ),
-    error: (
-      <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-      </svg>
-    ),
-    warning: (
-      <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-      </svg>
-    ),
-    info: (
-      <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
-  };
-
-  return (
-    <div
-      className={`flex items-center gap-3 p-4 rounded-lg border-l-4 shadow-lg animate-slide-in ${styles[toast.type]}`}
-    >
-      {icons[toast.type]}
-      <p className="flex-1 text-sm font-medium">{toast.message}</p>
-      <button
-        onClick={onClose}
-        className="text-gray-400 hover:text-gray-600 transition-colors"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-    </div>
   );
 }
 

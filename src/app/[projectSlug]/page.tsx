@@ -12,8 +12,17 @@ import { Ticket, TicketPriority, TicketStatus, TicketType } from '@/types';
 import { createTicket, updateTicket } from '@/lib/services';
 import { useNotification } from '@/hooks/useNotification';
 import { logger } from '@/lib/logger';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function ProjectPage() {
+  return (
+    <ProtectedRoute>
+      <ProjectPageContent />
+    </ProtectedRoute>
+  );
+}
+
+function ProjectPageContent() {
   const params = useParams();
   const slug = params.projectSlug as string;
   

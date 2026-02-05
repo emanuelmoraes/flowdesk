@@ -1,20 +1,23 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   User,
   signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
   signOut as firebaseSignOut,
   onAuthStateChanged,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
+import { UserRole, DEFAULT_USER_ROLE, isValidRole, getRolePermissions } from '@/types';
 
 export interface UserProfile {
   uid: string;
   email: string;
   displayName?: string;
-  role?: string;
+  role: UserRole;
   createdAt?: Date;
   lastLogin?: Date;
 }
@@ -25,8 +28,13 @@ interface UseAuthReturn {
   loading: boolean;
   error: string | null;
   signIn: (email: string, password: string) => Promise<boolean>;
+  signUp: (email: string, password: string, displayName: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
+  // Helpers de permissões
+  hasPermission: (permission: keyof ReturnType<typeof getRolePermissions>) => boolean;
+  isAdmin: boolean;
+  isManager: boolean;
 }
 
 export function useAuth(): UseAuthReturn {
@@ -43,11 +51,13 @@ export function useAuth(): UseAuthReturn {
 
       if (userDoc.exists()) {
         const data = userDoc.data();
+        const role = isValidRole(data.role) ? data.role : DEFAULT_USER_ROLE;
+        
         setUserProfile({
           uid: firebaseUser.uid,
           email: firebaseUser.email || '',
           displayName: data.displayName,
-          role: data.role || 'user',
+          role,
           createdAt: data.createdAt?.toDate(),
           lastLogin: data.lastLogin?.toDate(),
         });
@@ -59,7 +69,7 @@ export function useAuth(): UseAuthReturn {
         const newProfile = {
           email: firebaseUser.email,
           displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0],
-          role: 'user',
+          role: DEFAULT_USER_ROLE,
           createdAt: serverTimestamp(),
           lastLogin: serverTimestamp(),
         };
@@ -68,13 +78,11 @@ export function useAuth(): UseAuthReturn {
           uid: firebaseUser.uid,
           email: firebaseUser.email || '',
           displayName: newProfile.displayName,
-          role: 'user',
+          role: DEFAULT_USER_ROLE,
         });
       }
-    } catch (err) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Erro ao buscar perfil do usuário:', err);
-      }
+    } catch {
+      // Falha silenciosa - não expor erros no console por segurança
     }
   }, []);
 
@@ -112,18 +120,63 @@ export function useAuth(): UseAuthReturn {
     }
   }, []);
 
+  // Registro de novo usuário
+  const signUp = useCallback(async (email: string, password: string, displayName: string): Promise<boolean> => {
+    setError(null);
+    setLoading(true);
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Atualiza o nome de exibição no Firebase Auth
+      await updateProfile(userCredential.user, { displayName });
+
+      // Cria o perfil do usuário no Firestore
+      const userDocRef = doc(db, 'users', userCredential.user.uid);
+      await setDoc(userDocRef, {
+        email,
+        displayName,
+        role: DEFAULT_USER_ROLE,
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+      });
+
+      return true;
+    } catch (err) {
+      const errorMessage = getAuthErrorMessage(err);
+      setError(errorMessage);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Logout
   const signOut = useCallback(async () => {
     try {
       await firebaseSignOut(auth);
       setUser(null);
       setUserProfile(null);
-    } catch (err) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Erro ao fazer logout:', err);
-      }
+    } catch {
+      // Falha silenciosa - não expor erros no console por segurança
     }
   }, []);
+
+  // Helpers de permissões memoizados
+  const permissions = useMemo(() => {
+    if (!userProfile) return getRolePermissions('user');
+    return getRolePermissions(userProfile.role);
+  }, [userProfile]);
+
+  const hasPermission = useCallback(
+    (permission: keyof ReturnType<typeof getRolePermissions>) => {
+      return permissions[permission] === true;
+    },
+    [permissions]
+  );
+
+  const isAdmin = useMemo(() => userProfile?.role === 'admin', [userProfile]);
+  const isManager = useMemo(() => userProfile?.role === 'manager' || userProfile?.role === 'admin', [userProfile]);
 
   return {
     user,
@@ -131,8 +184,12 @@ export function useAuth(): UseAuthReturn {
     loading,
     error,
     signIn,
+    signUp,
     signOut,
     isAuthenticated: !!user,
+    hasPermission,
+    isAdmin,
+    isManager,
   };
 }
 
@@ -153,7 +210,13 @@ function getAuthErrorMessage(error: unknown): string {
       return 'Credenciais inválidas.';
     case 'auth/too-many-requests':
       return 'Muitas tentativas. Tente novamente mais tarde.';
+    case 'auth/email-already-in-use':
+      return 'Este email já está em uso.';
+    case 'auth/weak-password':
+      return 'A senha deve ter pelo menos 6 caracteres.';
+    case 'auth/operation-not-allowed':
+      return 'Operação não permitida. Contate o administrador.';
     default:
-      return 'Erro ao fazer login. Tente novamente.';
+      return 'Erro ao processar. Tente novamente.';
   }
 }

@@ -9,10 +9,11 @@ import { Project, Ticket } from '@/types';
 import { ProjectCardSkeleton } from '@/components/ui/Skeletons';
 import { calculateProjectProgress, getTicketsByProject } from '@/lib/services';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import NotificationBell from '@/components/NotificationBell';
 import { useNotification } from '@/hooks/useNotification';
 import { useAuth } from '@/hooks/useAuth';
 import { logger } from '@/lib/logger';
-import { FaClipboardList } from 'react-icons/fa6';
+import { FaClipboardList, FaGear } from 'react-icons/fa6';
 
 interface ProjectWithProgress extends Project {
   progress: number;
@@ -135,6 +136,16 @@ function ProjetosContent() {
                   Olá, <span className="font-medium">{userProfile.displayName || userProfile.email}</span>
                 </span>
               )}
+              
+              <NotificationBell />
+              
+              <button
+                onClick={() => router.push('/settings')}
+                className="p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Configurações"
+              >
+                <FaGear className="w-5 h-5" />
+              </button>
               
               <button
                 onClick={() => router.push('/criar-projeto')}

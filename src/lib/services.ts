@@ -42,7 +42,6 @@ export const createProject = async (
     
     return docRef.id;
   } catch (error) {
-    console.error('Erro ao criar projeto:', error);
     throw error;
   }
 };
@@ -58,7 +57,6 @@ export const updateProject = async (
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
-    console.error('Erro ao atualizar projeto:', error);
     throw error;
   }
 };
@@ -103,7 +101,6 @@ export const createTicket = async (
     
     return docRef.id;
   } catch (error) {
-    console.error('Erro ao criar ticket:', error);
     throw error;
   }
 };
@@ -128,7 +125,6 @@ export const updateTicket = async (
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
-    console.error('Erro ao atualizar ticket:', error);
     throw error;
   }
 };
@@ -138,7 +134,6 @@ export const deleteTicket = async (ticketId: string): Promise<void> => {
     const ticketRef = doc(db, 'tickets', ticketId);
     await deleteDoc(ticketRef);
   } catch (error) {
-    console.error('Erro ao deletar ticket:', error);
     throw error;
   }
 };
@@ -156,7 +151,6 @@ export const moveTicket = async (
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
-    console.error('Erro ao mover ticket:', error);
     throw error;
   }
 };
@@ -184,7 +178,6 @@ export const reorderTickets = async (
     
     await batch.commit();
   } catch (error) {
-    console.error('Erro ao reordenar tickets:', error);
     throw error;
   }
 };

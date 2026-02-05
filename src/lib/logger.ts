@@ -36,21 +36,9 @@ export async function createLog(params: CreateLogParams): Promise<string | null>
     };
 
     const docRef = await addDoc(collection(db, LOGS_COLLECTION), logData);
-    
-    // Em desenvolvimento, também mostra no console
-    if (process.env.NODE_ENV === 'development') {
-      const consoleMethod = params.level === 'error' ? console.error 
-        : params.level === 'warn' ? console.warn 
-        : console.log;
-      consoleMethod(`[${params.level.toUpperCase()}] ${params.message}`, params.metadata || '');
-    }
-
     return docRef.id;
-  } catch (error) {
-    // Se falhar ao salvar log, apenas mostra no console em desenvolvimento
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Falha ao salvar log:', error);
-    }
+  } catch {
+    // Falha silenciosa - não expor erros no console por segurança
     return null;
   }
 }
@@ -128,10 +116,8 @@ export async function getLogs(filters: LogFilters = {}): Promise<LogEntry[]> {
     }
 
     return logs;
-  } catch (error) {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Erro ao buscar logs:', error);
-    }
+  } catch {
+    // Falha silenciosa - não expor erros no console por segurança
     return [];
   }
 }

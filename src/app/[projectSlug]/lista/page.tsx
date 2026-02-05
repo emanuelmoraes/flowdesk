@@ -10,8 +10,17 @@ import TicketFormFields from '@/components/forms/TicketFormFields';
 import { Ticket, TicketPriority, TicketStatus, TicketType } from '@/types';
 import { createTicket, updateTicket } from '@/lib/services';
 import { logger } from '@/lib/logger';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function ProjectListPage() {
+  return (
+    <ProtectedRoute>
+      <ProjectListPageContent />
+    </ProtectedRoute>
+  );
+}
+
+function ProjectListPageContent() {
   const params = useParams();
   const slug = params.projectSlug as string;
   
