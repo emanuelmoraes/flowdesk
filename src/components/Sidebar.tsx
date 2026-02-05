@@ -62,23 +62,11 @@ export default function Sidebar({ collapsed: controlledCollapsed, onToggle }: Si
   return (
     <aside 
       className={`
-        fixed left-0 top-0 h-full bg-white border-r border-gray-200 
+        fixed left-0 top-14 h-[calc(100vh-3.5rem)] bg-white border-r border-gray-200 
         flex flex-col transition-all duration-300 z-40
         ${collapsed ? 'w-16' : 'w-56'}
       `}
     >
-      {/* Logo */}
-      <div className={`p-4 border-b border-gray-200 ${collapsed ? 'px-3' : ''}`}>
-        <Link href="/projetos" className="flex items-center gap-2">
-          {collapsed ? (
-            <span className="text-xl font-bold text-blue-600 w-full text-center">F</span>
-          ) : (
-            <span className="text-xl font-bold text-gray-900">
-              Flow<span className="text-blue-600">Desk</span>
-            </span>
-          )}
-        </Link>
-      </div>
 
       {/* Menu Items */}
       <nav className="flex-1 py-4">

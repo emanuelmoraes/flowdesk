@@ -35,26 +35,26 @@ export default function AppLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <AppHeader 
+        title={title}
+        subtitle={subtitle}
+        rightContent={headerRightContent}
+        showNewProject={showNewProject}
+      />
+      
       <Sidebar 
         collapsed={sidebarCollapsed} 
         onToggle={setSidebarCollapsed} 
       />
       
-      <div 
+      <main 
         className={`
-          transition-all duration-300
+          pt-14 transition-all duration-300
           ${sidebarCollapsed ? 'ml-16' : 'ml-56'}
         `}
       >
-        <AppHeader 
-          title={title}
-          subtitle={subtitle}
-          rightContent={headerRightContent}
-          showNewProject={showNewProject}
-        />
-        
         {children}
-      </div>
+      </main>
     </div>
   );
 }

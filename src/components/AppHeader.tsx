@@ -32,8 +32,8 @@ export default function AppHeader({
   };
 
   return (
-    <header className="bg-white border-b border-gray-200">
-      <div className="container mx-auto px-4 py-3">
+    <header className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50">
+      <div className="px-6 py-3">
         <div className="flex items-center justify-between">
           {/* Lado esquerdo - Logo e título */}
           <div className="flex items-center gap-4">
