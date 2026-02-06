@@ -206,7 +206,7 @@ function GerenciarTicketsContent() {
     >
 
       {/* Filtros */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-gray-200 mt-5">
         <div className="container mx-auto px-4 py-3">
           <div className="flex gap-4 flex-wrap">
             <div>

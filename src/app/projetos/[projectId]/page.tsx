@@ -13,7 +13,19 @@ import { createTicket, updateTicket } from '@/lib/services';
 import { logger } from '@/lib/logger';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import AppLayout from '@/components/AppLayout';
-import { FaGear } from 'react-icons/fa6';
+import { FaGear, FaTableColumns, FaCalendarDays, FaTimeline } from 'react-icons/fa6';
+
+// Ícone de Gantt customizado
+function FaChartGantt({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <rect x="3" y="4" width="8" height="3" rx="0.5" />
+      <rect x="6" y="9" width="12" height="3" rx="0.5" />
+      <rect x="4" y="14" width="6" height="3" rx="0.5" />
+      <rect x="8" y="19" width="10" height="3" rx="0.5" />
+    </svg>
+  );
+}
 
 export default function ProjectKanbanPage() {
   return (
@@ -157,26 +169,25 @@ function ProjectKanbanContent() {
 
   if (projectLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando projeto...</p>
-        </div>
-      </div>
+      <AppLayout title="Carregando...">
+        <KanbanBoardSkeleton />
+      </AppLayout>
     );
   }
 
   if (error || !project) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
-          <p className="text-xl text-gray-600 mb-8">Projeto não encontrado</p>
-          <Link href="/projetos" className="text-blue-600 hover:underline">
-            Voltar para projetos
-          </Link>
+      <AppLayout title="Erro">
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-3">Projeto não encontrado</h1>
+            <p className="text-gray-600 mb-6">{error || 'O projeto solicitado não existe.'}</p>
+            <Link href="/projetos" className="text-blue-600 hover:underline text-sm">
+              Voltar para projetos
+            </Link>
+          </div>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
@@ -185,7 +196,35 @@ function ProjectKanbanContent() {
       title={project.name}
       subtitle={project.description}
       headerRightContent={
-        <>
+        <div className="flex items-center gap-2">
+          {/* Navegação entre visualizações */}
+          <div className="flex bg-gray-100 rounded-lg p-0.5 mr-2">
+            <span className="px-3 py-1.5 text-sm rounded-md bg-white text-blue-600 shadow-sm" title="Kanban">
+              <FaTableColumns className="w-4 h-4" />
+            </span>
+            <Link
+              href={`/projetos/${projectId}/gantt`}
+              className="px-3 py-1.5 text-sm rounded-md text-gray-600 hover:text-gray-900 transition-colors"
+              title="Gantt"
+            >
+              <FaChartGantt className="w-4 h-4" />
+            </Link>
+            <Link
+              href={`/projetos/${projectId}/calendar`}
+              className="px-3 py-1.5 text-sm rounded-md text-gray-600 hover:text-gray-900 transition-colors"
+              title="Calendário"
+            >
+              <FaCalendarDays className="w-4 h-4" />
+            </Link>
+            <Link
+              href={`/projetos/${projectId}/timeline`}
+              className="px-3 py-1.5 text-sm rounded-md text-gray-600 hover:text-gray-900 transition-colors"
+              title="Timeline"
+            >
+              <FaTimeline className="w-4 h-4" />
+            </Link>
+          </div>
+          
           <Link
             href={`/projetos/editar/${projectId}`}
             className="p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -199,7 +238,7 @@ function ProjectKanbanContent() {
           >
             + Novo Ticket
           </button>
-        </>
+        </div>
       }
     >
 

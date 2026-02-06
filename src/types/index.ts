@@ -87,6 +87,11 @@ export interface Ticket {
   updatedAt: Date;
   order: number;
   projectId: string;
+  // Campos para Gantt/Calendário
+  startDate?: Date;
+  dueDate?: Date;
+  estimatedHours?: number;
+  progress?: number; // 0-100
 }
 
 export interface Project {
