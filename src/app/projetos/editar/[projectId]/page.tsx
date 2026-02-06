@@ -206,135 +206,123 @@ function EditarProjetoContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando projeto...</p>
+      <AppLayout title="Editar Projeto">
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3"></div>
+            <p className="text-gray-600 text-sm">Carregando projeto...</p>
+          </div>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
   if (error && !project) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Erro</h1>
-          <p className="text-xl text-gray-600 mb-8">{error}</p>
-          <button
-            onClick={() => router.push('/projetos')}
-            className="text-blue-600 hover:underline"
-          >
-            Voltar para projetos
-          </button>
+      <AppLayout title="Erro">
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-3">Projeto não encontrado</h1>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <button
+              onClick={() => router.push('/projetos')}
+              className="text-blue-600 hover:underline text-sm"
+            >
+              Voltar para projetos
+            </button>
+          </div>
         </div>
-      </div>
+      </AppLayout>
     );
   }
 
   return (
     <AppLayout title="Editar Projeto" subtitle={project?.name}>
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-xl shadow-lg p-8">
-
-            <form onSubmit={handleSave} className="space-y-6">
-              {/* Nome do Projeto */}
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome do Projeto *
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Nome do projeto"
-                  required
-                />
-              </div>
-
-              {/* URL do Projeto (não editável) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  URL do Projeto
-                </label>
-                <div className="bg-gray-50 px-4 py-3 rounded-lg border border-gray-200">
-                  <span className="text-gray-500 text-sm mr-2">flowdesk.com/</span>
-                  <span className="font-mono text-sm text-gray-700">{project?.slug}</span>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  A URL não pode ser alterada após a criação
-                </p>
-              </div>
-
-              {/* Descrição */}
-              <div>
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-                  Descrição
-                </label>
-                <RichTextEditor
-                  content={description}
-                  onChange={setDescription}
-                  placeholder="Descreva o objetivo deste projeto... Cole links que serão automaticamente detectados!"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Use a barra de ferramentas para formatar o texto. Links colados automaticamente se tornam clicáveis.
-                </p>
-              </div>
-
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                  {error}
-                </div>
-              )}
-
-              {/* Botões de Ação */}
-              <div className="flex gap-4">
-                <button
-                  type="button"
-                  onClick={() => router.push('/projetos')}
-                  className="flex-1 px-6 py-3 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {saving ? 'Salvando...' : 'Salvar Alterações'}
-                </button>
-              </div>
-            </form>
-
-            {/* Ações Rápidas */}
-            <div className="mt-8 pt-8 border-t border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Ações Rápidas</h2>
-              <p className="text-gray-600 text-sm mb-4">
-                Acesse outras funcionalidades do projeto.
-              </p>
+      <div className="px-6 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Coluna Principal - Formulário */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-6">Informações do Projeto</h2>
               
-              <div className="flex gap-3">
-                <button
-                  onClick={() => router.push(`/${project?.slug}`)}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                >
-                  Ver Kanban
-                </button>
-                <button
-                  onClick={() => router.push(`/projetos/editar/${projectId}/tickets`)}
-                  className="px-6 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors"
-                >
-                  Gerenciar Tickets
-                </button>
-              </div>
+              <form onSubmit={handleSave} className="space-y-5">
+                {/* Nome e URL lado a lado */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Nome do Projeto */}
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1.5">
+                      Nome do Projeto *
+                    </label>
+                    <input
+                      type="text"
+                      id="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      placeholder="Nome do projeto"
+                      required
+                    />
+                  </div>
+
+                  {/* URL do Projeto (não editável) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      URL do Projeto
+                    </label>
+                    <div className="bg-gray-50 px-4 py-2.5 rounded-lg border border-gray-200">
+                      <span className="text-gray-500 text-sm mr-1">flowdesk.com/</span>
+                      <span className="font-mono text-sm text-gray-700">{project?.slug}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Não pode ser alterada após criação
+                    </p>
+                  </div>
+                </div>
+
+                {/* Descrição */}
+                <div>
+                  <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Descrição
+                  </label>
+                  <RichTextEditor
+                    content={description}
+                    onChange={setDescription}
+                    placeholder="Descreva o objetivo deste projeto... Cole links que serão automaticamente detectados!"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Use a barra de ferramentas para formatar o texto. Links colados automaticamente se tornam clicáveis.
+                  </p>
+                </div>
+
+                {error && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                    {error}
+                  </div>
+                )}
+
+                {/* Botões de Ação */}
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => router.push('/projetos')}
+                    className="px-5 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {saving ? 'Salvando...' : 'Salvar Alterações'}
+                  </button>
+                </div>
+              </form>
             </div>
 
-            {/* Gerenciar Membros */}
-            <div className="mt-8 pt-8 border-t border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Membros do Projeto</h2>
+            {/* Card de Membros do Projeto */}
+            <div className="bg-white rounded-xl shadow-md p-6 mt-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">Membros do Projeto</h2>
               <p className="text-gray-600 text-sm mb-4">
                 Adicione pessoas para colaborar neste projeto.
               </p>
@@ -346,12 +334,12 @@ function EditarProjetoContent() {
                   value={newMemberEmail}
                   onChange={(e) => setNewMemberEmail(e.target.value)}
                   placeholder="Digite o email do usuário"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <button
                   type="submit"
                   disabled={addingMember || !newMemberEmail.trim()}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   <FaUserPlus className="w-4 h-4" />
                   {addingMember ? 'Adicionando...' : 'Adicionar'}
@@ -359,7 +347,7 @@ function EditarProjetoContent() {
               </form>
 
               {/* Lista de membros */}
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-64 overflow-y-auto">
                 {members.length === 0 ? (
                   <p className="text-gray-500 text-sm py-2">Nenhum membro encontrado.</p>
                 ) : (
@@ -369,21 +357,21 @@ function EditarProjetoContent() {
                       className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                           <span className="text-blue-600 font-semibold text-sm">
                             {member.displayName?.charAt(0).toUpperCase() || member.email.charAt(0).toUpperCase()}
                           </span>
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-900 flex items-center gap-2">
-                            {member.displayName}
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 flex items-center gap-2 text-sm">
+                            <span className="truncate">{member.displayName}</span>
                             {member.id === project?.ownerId && (
-                              <span className="text-yellow-600" title="Dono do projeto">
-                                <FaCrown className="w-4 h-4" />
+                              <span className="text-yellow-600 flex-shrink-0" title="Dono do projeto">
+                                <FaCrown className="w-3.5 h-3.5" />
                               </span>
                             )}
                           </p>
-                          <p className="text-sm text-gray-500">{member.email}</p>
+                          <p className="text-xs text-gray-500 truncate">{member.email}</p>
                         </div>
                       </div>
                       
@@ -392,7 +380,7 @@ function EditarProjetoContent() {
                         <button
                           onClick={() => handleRemoveMember(member.id, member.displayName)}
                           disabled={removingMemberId === member.id}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
                           title="Remover membro"
                         >
                           {removingMemberId === member.id ? (
@@ -407,17 +395,43 @@ function EditarProjetoContent() {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* Coluna Lateral */}
+          <div className="space-y-6">
+            {/* Ações Rápidas */}
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">Ações Rápidas</h2>
+              <p className="text-gray-600 text-sm mb-4">
+                Acesse outras funcionalidades.
+              </p>
+              
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => router.push(`/${project?.slug}`)}
+                  className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm"
+                >
+                  Ver Kanban
+                </button>
+                <button
+                  onClick={() => router.push(`/projetos/editar/${projectId}/tickets`)}
+                  className="w-full px-4 py-2.5 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors text-sm"
+                >
+                  Gerenciar Tickets
+                </button>
+              </div>
+            </div>
 
             {/* Zona de Perigo */}
-            <div className="mt-8 pt-8 border-t border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Zona de Perigo</h2>
+            <div className="bg-white rounded-xl shadow-md p-6 border border-red-100">
+              <h2 className="text-lg font-semibold text-red-700 mb-1">Zona de Perigo</h2>
               <p className="text-gray-600 text-sm mb-4">
-                Ações irreversíveis que afetam permanentemente este projeto.
+                Ações irreversíveis para este projeto.
               </p>
               
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                className="px-6 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
+                className="w-full px-4 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors text-sm"
               >
                 Deletar Projeto
               </button>
