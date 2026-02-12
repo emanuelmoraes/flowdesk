@@ -19,17 +19,17 @@ Transformar o FlowDesk em um produto comercializável, com confiança operaciona
 ## Fase 0 — Fundamentos para produção (Alta prioridade)
 
 ### Segurança e dados
-- [ ] Revisar e aplicar regras de Firestore para produção (sem permissões abertas)
-- [ ] Garantir autorização por projeto (owner/members) em todas as operações críticas
-- [ ] Revisar modelo de papéis (`user`, `manager`, `admin`) e aplicar enforcement no backend/regras
-- [ ] Criar política de retenção e acesso a logs
-- [ ] Validar campos temporais sempre com `Timestamp` do Firestore
+- [x] Revisar e aplicar regras de Firestore para produção (sem permissões abertas)
+- [x] Garantir autorização por projeto (owner/members) em todas as operações críticas
+- [x] Revisar modelo de papéis (`user`, `manager`, `admin`) e aplicar enforcement no backend/regras
+- [x] Criar política de retenção e acesso a logs
+- [x] Validar campos temporais sempre com `Timestamp` do Firestore
 
 ### Confiabilidade de dados
-- [ ] Padronizar validações de entrada (slug, título, descrição, tags, limites de tamanho)
-- [ ] Eliminar estados silenciosos sem tratamento em hooks/serviços
-- [ ] Definir e criar índices Firestore obrigatórios para queries de produção
-- [ ] Revisar operações de atualização em lote e conflitos de concorrência (ordenação de tickets)
+- [x] Padronizar validações de entrada (slug, título, descrição, tags, limites de tamanho)
+- [x] Eliminar estados silenciosos sem tratamento em hooks/serviços
+- [x] Definir e criar índices Firestore obrigatórios para queries de produção
+- [x] Revisar operações de atualização em lote e conflitos de concorrência (ordenação de tickets)
 
 ### Documentação técnica mínima
 - [ ] Atualizar documentação para refletir o estado real do projeto (auth já implementada)

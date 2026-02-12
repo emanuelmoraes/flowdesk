@@ -65,6 +65,7 @@ export default function TicketFormFields({
           type="text"
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
+          maxLength={160}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           placeholder="Digite o título do ticket"
           required
@@ -79,6 +80,7 @@ export default function TicketFormFields({
         <textarea
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
+          maxLength={10000}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           rows={3}
           placeholder="Descreva o ticket (opcional)"
@@ -102,6 +104,7 @@ export default function TicketFormFields({
             type="text"
             value={tags}
             onChange={(e) => onTagsChange(e.target.value)}
+            maxLength={320}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Separe por vírgula"
           />

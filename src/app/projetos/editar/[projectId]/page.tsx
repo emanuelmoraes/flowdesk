@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Project } from '@/types';
 import RichTextEditor from '@/components/RichTextEditor';
@@ -42,6 +42,7 @@ function EditarProjetoContent() {
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [addingMember, setAddingMember] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const isOwner = !!user && !!project && project.ownerId === user.uid;
 
   useEffect(() => {
     fetchProject();
@@ -56,8 +57,18 @@ function EditarProjetoContent() {
   }, [project?.members]);
 
   const fetchMembers = async (memberIds: string[]) => {
-    const membersData = await getUsersByIds(memberIds);
-    setMembers(membersData);
+    try {
+      const membersData = await getUsersByIds(memberIds);
+      setMembers(membersData);
+    } catch (err) {
+      logger.error('Erro ao carregar membros do projeto', {
+        action: 'load_project_members',
+        metadata: { projectId, memberIds, error: String(err) },
+        page: 'editar_projeto',
+      });
+      setMembers([]);
+      showError('Não foi possível carregar os membros do projeto.');
+    }
   };
 
   const fetchProject = async () => {
@@ -94,6 +105,11 @@ function EditarProjetoContent() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!project || !user || project.ownerId !== user.uid) {
+      showError('Apenas o dono do projeto pode editar estas configurações.');
+      return;
+    }
     
     if (!name.trim()) {
       setError('Nome do projeto é obrigatório');
@@ -107,7 +123,7 @@ function EditarProjetoContent() {
       await updateDoc(projectRef, {
         name: name.trim(),
         description: description, // Agora é HTML, não precisa trim
-        updatedAt: new Date(),
+        updatedAt: serverTimestamp(),
       });
 
       router.push('/projetos');
@@ -123,6 +139,11 @@ function EditarProjetoContent() {
   };
 
   const handleDelete = async () => {
+    if (!project || !user || project.ownerId !== user.uid) {
+      showError('Apenas o dono do projeto pode excluir este projeto.');
+      return;
+    }
+
     try {
       // TODO: Deletar todos os tickets do projeto antes
       await deleteDoc(doc(db, 'projects', projectId));
@@ -143,6 +164,11 @@ function EditarProjetoContent() {
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!project || !user || project.ownerId !== user.uid) {
+      showError('Apenas o dono do projeto pode adicionar membros.');
+      return;
+    }
     
     if (!newMemberEmail.trim()) return;
     
@@ -183,6 +209,11 @@ function EditarProjetoContent() {
 
   const handleRemoveMember = async (memberId: string, memberName: string) => {
     if (!project) return;
+
+    if (!user || project.ownerId !== user.uid) {
+      showError('Apenas o dono do projeto pode remover membros.');
+      return;
+    }
     
     setRemovingMemberId(memberId);
     try {
@@ -239,6 +270,12 @@ function EditarProjetoContent() {
   return (
     <AppLayout title="Editar Projeto" subtitle={project?.name}>
       <div className="px-6 py-6">
+        {!isOwner && project && (
+          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Você é membro deste projeto, mas somente o dono pode alterar configurações e membros.
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Coluna Principal - Formulário */}
           <div className="lg:col-span-2">
@@ -311,7 +348,7 @@ function EditarProjetoContent() {
                   </button>
                   <button
                     type="submit"
-                    disabled={saving}
+                    disabled={saving || !isOwner}
                     className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {saving ? 'Salvando...' : 'Salvar Alterações'}
@@ -338,7 +375,7 @@ function EditarProjetoContent() {
                 />
                 <button
                   type="submit"
-                  disabled={addingMember || !newMemberEmail.trim()}
+                  disabled={addingMember || !newMemberEmail.trim() || !isOwner}
                   className="px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   <FaUserPlus className="w-4 h-4" />
@@ -379,7 +416,7 @@ function EditarProjetoContent() {
                       {member.id !== project?.ownerId && (
                         <button
                           onClick={() => handleRemoveMember(member.id, member.displayName)}
-                          disabled={removingMemberId === member.id}
+                          disabled={removingMemberId === member.id || !isOwner}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
                           title="Remover membro"
                         >

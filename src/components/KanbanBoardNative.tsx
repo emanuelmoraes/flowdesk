@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Ticket, TicketStatus } from '@/types';
-import { moveTicket } from '@/lib/services';
+import { reorderTickets } from '@/lib/services';
 import { logger } from '@/lib/logger';
 
 interface KanbanBoardProps {
@@ -132,21 +132,51 @@ export default function KanbanBoardNative({ tickets, onTicketsUpdate, onEditTick
     const ticket = tickets.find(t => t.id === ticketId);
     if (!ticket || ticket.status === targetStatus) return;
 
-    const ticketsInColumn = ticketsByStatus[targetStatus];
-    const newOrder = ticketsInColumn.length + 1;
+    const sourceStatus = ticket.status;
+    const sourceTicketsWithoutMoved = ticketsByStatus[sourceStatus]
+      .filter((t) => t.id !== ticketId)
+      .map((t, index) => ({ ...t, order: index + 1 }));
+
+    const targetTicketsWithMoved = [
+      ...ticketsByStatus[targetStatus].map((t) => ({ ...t })),
+      { ...ticket, status: targetStatus },
+    ].map((t, index) => ({ ...t, order: index + 1 }));
+
+    const updatedTickets = tickets.map((t) => {
+      const sourceMatch = sourceTicketsWithoutMoved.find((st) => st.id === t.id);
+      if (sourceMatch) {
+        return { ...t, status: sourceStatus, order: sourceMatch.order };
+      }
+
+      const targetMatch = targetTicketsWithMoved.find((tt) => tt.id === t.id);
+      if (targetMatch) {
+        return { ...t, status: targetStatus, order: targetMatch.order };
+      }
+
+      return t;
+    });
+
+    const batchUpdates = [
+      ...sourceTicketsWithoutMoved.map((t) => ({ id: t.id, order: t.order, status: sourceStatus })),
+      ...targetTicketsWithMoved.map((t) => ({ id: t.id, order: t.order, status: targetStatus })),
+    ];
+
+    const dedupedBatchUpdates = Object.values(
+      batchUpdates.reduce((acc, update) => {
+        acc[update.id] = update;
+        return acc;
+      }, {} as Record<string, { id: string; order: number; status: TicketStatus }>)
+    );
 
     // Atualiza localmente primeiro
-    const updatedTickets = tickets.map((t) =>
-      t.id === ticketId ? { ...t, status: targetStatus, order: newOrder } : t
-    );
     onTicketsUpdate(updatedTickets);
 
     try {
-      await moveTicket(ticketId, targetStatus, newOrder);
+      await reorderTickets(dedupedBatchUpdates);
     } catch (error) {
       logger.error('Erro ao mover ticket', {
         action: 'move_ticket',
-        metadata: { ticketId, targetStatus, error: String(error) },
+        metadata: { ticketId, sourceStatus, targetStatus, error: String(error) },
         page: 'kanban',
       });
       onTicketsUpdate(tickets);

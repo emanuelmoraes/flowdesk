@@ -4,11 +4,13 @@ import {
   collection, 
   query, 
   where, 
+  orderBy,
   getDocs,
   doc,
   getDoc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { logger } from '@/lib/logger';
 import { Project, Ticket } from '@/types';
 
 // Hook para buscar projeto por ID
@@ -34,7 +36,12 @@ export const useProjectById = (projectId: string) => {
         } else {
           setError('Projeto não encontrado');
         }
-      } catch {
+      } catch (error) {
+        logger.error('Erro ao carregar projeto por ID', {
+          action: 'load_project_by_id',
+          metadata: { projectId, error: String(error) },
+          page: 'useProjectById',
+        });
         setError('Erro ao carregar projeto');
       } finally {
         setLoading(false);
@@ -76,7 +83,12 @@ export const useProject = (slug: string) => {
         } else {
           setError('Projeto não encontrado');
         }
-      } catch {
+      } catch (error) {
+        logger.error('Erro ao carregar projeto por slug', {
+          action: 'load_project_by_slug',
+          metadata: { slug, error: String(error) },
+          page: 'useProject',
+        });
         setError('Erro ao carregar projeto');
       } finally {
         setLoading(false);
@@ -94,16 +106,17 @@ export const useProject = (slug: string) => {
 export const useTickets = (projectId: string) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchTickets = async () => {
       try {
         setLoading(true);
-        // Removido orderBy para evitar necessidade de índice composto
-        // A ordenação será feita no cliente
+        setError(null);
         const q = query(
           collection(db, 'tickets'),
-          where('projectId', '==', projectId)
+          where('projectId', '==', projectId),
+          orderBy('order', 'asc')
         );
         const querySnapshot = await getDocs(q);
         
@@ -114,12 +127,14 @@ export const useTickets = (projectId: string) => {
           updatedAt: doc.data().updatedAt?.toDate(),
         })) as Ticket[];
         
-        // Ordena no cliente por order
-        ticketsData.sort((a, b) => a.order - b.order);
-        
         setTickets(ticketsData);
-      } catch {
-        // Falha silenciosa - erros são tratados pela UI
+      } catch (fetchError) {
+        logger.error('Erro ao carregar tickets do projeto', {
+          action: 'load_project_tickets',
+          metadata: { projectId, error: String(fetchError) },
+          page: 'useTickets',
+        });
+        setError('Erro ao carregar tickets');
       } finally {
         setLoading(false);
       }
@@ -130,5 +145,5 @@ export const useTickets = (projectId: string) => {
     }
   }, [projectId]);
 
-  return { tickets, loading, setTickets };
+  return { tickets, loading, error, setTickets };
 };

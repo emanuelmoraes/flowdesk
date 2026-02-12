@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, getDocs, where } from 'firebase/firestore';
+import { collection, query, getDocs, where, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Project, Ticket } from '@/types';
 import { ProjectCardSkeleton } from '@/components/ui/Skeletons';
@@ -48,7 +48,8 @@ function ProjetosContent() {
       // Buscar projetos onde o usuário é membro
       const projectsQuery = query(
         collection(db, 'projects'),
-        where('members', 'array-contains', user.uid)
+        where('members', 'array-contains', user.uid),
+        orderBy('updatedAt', 'desc')
       );
       const projectsSnapshot = await getDocs(projectsQuery);
       
@@ -91,9 +92,6 @@ function ProjetosContent() {
           ...progressData,
         } as ProjectWithProgress;
       });
-      
-      // Ordena por data de atualização (mais recente primeiro)
-      projectsWithProgress.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
       
       setProjects(projectsWithProgress);
     } catch (error) {

@@ -9,16 +9,17 @@ import {
   getDocs, 
   doc, 
   getDoc,
-  updateDoc,
   deleteDoc,
-  addDoc
+  serverTimestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Ticket, Project, TicketStatus, TicketPriority, TicketType } from '@/types';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import AppLayout from '@/components/AppLayout';
 import { useNotification } from '@/hooks/useNotification';
+import { useAuth } from '@/hooks/useAuth';
 import { logger } from '@/lib/logger';
+import { createTicket, updateTicket, deleteTicket } from '@/lib/services';
 import { ticketTypeLabels, ticketTypeIcons } from '@/components/icons/TicketTypeIcons';
 import { FaTicket } from 'react-icons/fa6';
 
@@ -34,6 +35,8 @@ function GerenciarTicketsContent() {
   const router = useRouter();
   const params = useParams();
   const projectId = params.projectId as string;
+  const { user } = useAuth();
+  const { showError } = useNotification();
 
   const [project, setProject] = useState<Project | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -44,11 +47,12 @@ function GerenciarTicketsContent() {
   const [filterStatus, setFilterStatus] = useState<TicketStatus | 'all'>('all');
   const [filterPriority, setFilterPriority] = useState<TicketPriority | 'all'>('all');
   const [filterType, setFilterType] = useState<TicketType | 'all'>('all');
+  const [canManageTickets, setCanManageTickets] = useState(false);
 
   useEffect(() => {
     fetchProjectAndTickets();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
+  }, [projectId, user?.uid]);
 
   const fetchProjectAndTickets = async () => {
     try {
@@ -57,12 +61,22 @@ function GerenciarTicketsContent() {
       // Buscar projeto
       const projectDoc = await getDoc(doc(db, 'projects', projectId));
       if (projectDoc.exists()) {
-        setProject({
+        const projectData = {
           id: projectDoc.id,
           ...projectDoc.data(),
           createdAt: projectDoc.data().createdAt?.toDate(),
           updatedAt: projectDoc.data().updatedAt?.toDate(),
-        } as Project);
+        } as Project;
+
+        setProject(projectData);
+
+        const isMember = !!user && (projectData.members || []).includes(user.uid);
+        setCanManageTickets(isMember);
+
+        if (!isMember) {
+          setTickets([]);
+          return;
+        }
       }
 
       // Buscar tickets
@@ -82,6 +96,7 @@ function GerenciarTicketsContent() {
       ticketsData.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       setTickets(ticketsData);
     } catch (error) {
+      setCanManageTickets(false);
       logger.error('Erro ao carregar dados', {
         action: 'load_tickets',
         metadata: { projectId, error: String(error) },
@@ -93,8 +108,13 @@ function GerenciarTicketsContent() {
   };
 
   const handleDeleteTicket = async (ticketId: string) => {
+    if (!canManageTickets) {
+      showError('Você não tem permissão para excluir tickets deste projeto.');
+      return;
+    }
+
     try {
-      await deleteDoc(doc(db, 'tickets', ticketId));
+      await deleteTicket(ticketId);
       setTickets(tickets.filter(t => t.id !== ticketId));
       setDeleteConfirm(null);
       logger.success('Ticket deletado', {
@@ -190,8 +210,15 @@ function GerenciarTicketsContent() {
       headerRightContent={
         <>
           <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
+            onClick={() => {
+              if (!canManageTickets) {
+                showError('Você não tem permissão para criar tickets neste projeto.');
+                return;
+              }
+              setShowCreateModal(true);
+            }}
+            disabled={!canManageTickets}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             + Novo Ticket
           </button>
@@ -204,6 +231,11 @@ function GerenciarTicketsContent() {
         </>
       }
     >
+      {!canManageTickets && (
+        <div className="mx-4 mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Você não tem permissão para gerenciar tickets neste projeto.
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="bg-white border-b border-gray-200 mt-5">
@@ -350,14 +382,28 @@ function GerenciarTicketsContent() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
-                        onClick={() => setEditingTicket(ticket)}
-                        className="text-blue-600 hover:text-blue-900 mr-4"
+                        onClick={() => {
+                          if (!canManageTickets) {
+                            showError('Você não tem permissão para editar tickets deste projeto.');
+                            return;
+                          }
+                          setEditingTicket(ticket);
+                        }}
+                        disabled={!canManageTickets}
+                        className="text-blue-600 hover:text-blue-900 mr-4 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Editar
                       </button>
                       <button
-                        onClick={() => setDeleteConfirm(ticket.id)}
-                        className="text-red-600 hover:text-red-900"
+                        onClick={() => {
+                          if (!canManageTickets) {
+                            showError('Você não tem permissão para excluir tickets deste projeto.');
+                            return;
+                          }
+                          setDeleteConfirm(ticket.id);
+                        }}
+                        disabled={!canManageTickets}
+                        className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Deletar
                       </button>
@@ -374,6 +420,7 @@ function GerenciarTicketsContent() {
       {editingTicket && (
         <EditTicketModal
           ticket={editingTicket}
+          canManageTickets={canManageTickets}
           onClose={() => setEditingTicket(null)}
           onSave={() => {
             fetchProjectAndTickets();
@@ -386,6 +433,7 @@ function GerenciarTicketsContent() {
       {showCreateModal && (
         <CreateTicketModal
           projectId={projectId}
+          canManageTickets={canManageTickets}
           onClose={() => setShowCreateModal(false)}
           onSave={() => {
             fetchProjectAndTickets();
@@ -427,10 +475,12 @@ function GerenciarTicketsContent() {
 // Modal de Edição de Ticket
 function EditTicketModal({ 
   ticket, 
+  canManageTickets,
   onClose, 
   onSave 
 }: { 
   ticket: Ticket; 
+  canManageTickets: boolean;
   onClose: () => void; 
   onSave: () => void; 
 }) {
@@ -444,6 +494,11 @@ function EditTicketModal({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!canManageTickets) {
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -454,14 +509,13 @@ function EditTicketModal({
         .filter(tag => tag.length > 0);
 
       const ticketRef = doc(db, 'tickets', ticket.id);
-      await updateDoc(ticketRef, {
+      await updateTicket(ticket.id, {
         title: title.trim(),
         description: description.trim(),
         status,
         priority,
         type,
         tags: tagsArray,
-        updatedAt: new Date(),
       });
       onSave();
     } catch (error) {
@@ -595,10 +649,12 @@ function EditTicketModal({
 // Modal de Criação de Ticket
 function CreateTicketModal({ 
   projectId, 
+  canManageTickets,
   onClose, 
   onSave 
 }: { 
   projectId: string; 
+  canManageTickets: boolean;
   onClose: () => void; 
   onSave: () => void; 
 }) {
@@ -612,6 +668,10 @@ function CreateTicketModal({
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!canManageTickets) {
+      return;
+    }
     
     if (!title.trim()) {
       alert('O título é obrigatório.');
@@ -627,33 +687,15 @@ function CreateTicketModal({
         .map(tag => tag.trim())
         .filter(tag => tag.length > 0);
 
-      // Buscar todos os tickets do projeto para calcular a próxima ordem
-      const q = query(
-        collection(db, 'tickets'),
-        where('projectId', '==', projectId),
-        where('status', '==', status)
-      );
-      const querySnapshot = await getDocs(q);
-      const maxOrder = querySnapshot.docs.reduce((max, doc) => {
-        const order = doc.data().order || 0;
-        return order > max ? order : max;
-      }, 0);
-
-      // Criar o novo ticket
-      const newTicket = {
-        title: title.trim(),
-        description: description.trim(),
+      await createTicket(
+        projectId,
+        title.trim(),
+        description.trim(),
         status,
         priority,
         type,
-        tags: tagsArray,
-        projectId,
-        order: maxOrder + 1,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      await addDoc(collection(db, 'tickets'), newTicket);
+        tagsArray
+      );
       onSave();
     } catch (error) {
       logger.error('Erro ao criar ticket', {

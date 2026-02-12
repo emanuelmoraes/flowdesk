@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createProject, validateSlug } from '@/lib/services';
+import { createProject, generateSlug, validateSlug } from '@/lib/services';
 import RichTextEditor from '@/components/RichTextEditor';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import AppLayout from '@/components/AppLayout';
@@ -29,15 +29,7 @@ function CriarProjetoContent() {
 
   const handleNameChange = (value: string) => {
     setName(value);
-    // Auto-gera o slug baseado no nome
-    const autoSlug = value
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
-      .replace(/[^a-z0-9\s-]/g, '') // Remove caracteres especiais
-      .replace(/\s+/g, '-') // Substitui espaços por hífens
-      .replace(/-+/g, '-') // Remove hífens duplicados
-      .trim();
+    const autoSlug = generateSlug(value);
     setSlug(autoSlug);
   };
 
@@ -92,6 +84,7 @@ function CriarProjetoContent() {
                 id="name"
                 value={name}
                 onChange={(e) => handleNameChange(e.target.value)}
+                maxLength={120}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="Meu Projeto Incrível"
                 required
@@ -108,7 +101,8 @@ function CriarProjetoContent() {
                   type="text"
                   id="slug"
                   value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
+                  onChange={(e) => setSlug(generateSlug(e.target.value))}
+                  maxLength={50}
                   className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono text-sm"
                   placeholder="meu-projeto"
                   required

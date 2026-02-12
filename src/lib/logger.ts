@@ -6,6 +6,7 @@ export type LogLevel = 'info' | 'warn' | 'error' | 'success';
 export interface LogEntry {
   id?: string;
   timestamp: Date;
+  retentionUntil?: Date;
   level: LogLevel;
   message: string;
   userId?: string;
@@ -24,6 +25,13 @@ interface CreateLogParams {
 }
 
 const LOGS_COLLECTION = 'logs';
+export const LOG_RETENTION_DAYS = 90;
+
+function getLogRetentionUntil(): Timestamp {
+  const retentionUntil = new Date();
+  retentionUntil.setDate(retentionUntil.getDate() + LOG_RETENTION_DAYS);
+  return Timestamp.fromDate(retentionUntil);
+}
 
 /**
  * Salva um log no Firestore
@@ -33,6 +41,7 @@ export async function createLog(params: CreateLogParams): Promise<string | null>
     const logData = {
       ...params,
       timestamp: serverTimestamp(),
+      retentionUntil: getLogRetentionUntil(),
     };
 
     const docRef = await addDoc(collection(db, LOGS_COLLECTION), logData);
@@ -101,6 +110,7 @@ export async function getLogs(filters: LogFilters = {}): Promise<LogEntry[]> {
       logs.push({
         id: doc.id,
         timestamp: data.timestamp?.toDate() || new Date(),
+        retentionUntil: data.retentionUntil?.toDate(),
         level: data.level,
         message: data.message,
         userId: data.userId,

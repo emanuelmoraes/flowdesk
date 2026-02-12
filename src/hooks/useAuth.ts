@@ -11,6 +11,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
+import { logger } from '@/lib/logger';
 import { UserRole, DEFAULT_USER_ROLE, isValidRole, getRolePermissions } from '@/types';
 
 export interface UserProfile {
@@ -81,8 +82,13 @@ export function useAuth(): UseAuthReturn {
           role: DEFAULT_USER_ROLE,
         });
       }
-    } catch {
-      // Falha silenciosa - não expor erros no console por segurança
+    } catch (error) {
+      logger.error('Erro ao carregar perfil do usuário', {
+        action: 'load_user_profile',
+        metadata: { uid: firebaseUser.uid, error: String(error) },
+        page: 'useAuth',
+      });
+      setError('Erro ao carregar perfil do usuário. Algumas permissões podem ficar indisponíveis.');
     }
   }, []);
 
@@ -157,8 +163,14 @@ export function useAuth(): UseAuthReturn {
       await firebaseSignOut(auth);
       setUser(null);
       setUserProfile(null);
-    } catch {
-      // Falha silenciosa - não expor erros no console por segurança
+      setError(null);
+    } catch (error) {
+      logger.error('Erro ao realizar logout', {
+        action: 'sign_out',
+        metadata: { error: String(error) },
+        page: 'useAuth',
+      });
+      setError('Erro ao sair da conta. Tente novamente.');
     }
   }, []);
 
