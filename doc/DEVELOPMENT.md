@@ -37,10 +37,30 @@ cp .env.local.example .env.local
 - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
 - `NEXT_PUBLIC_FIREBASE_APP_ID`
 
-4. Rodar aplicação
+4. (Opcional) Configurar Sentry no `.env.local`
+- `NEXT_PUBLIC_SENTRY_DSN`
+- `SENTRY_ENVIRONMENT` (ex.: `development`, `staging`, `production`)
+- `NEXT_PUBLIC_SENTRY_ENVIRONMENT`
+- `SENTRY_ORG` (opcional, para sourcemaps em build)
+- `SENTRY_PROJECT` (opcional, para sourcemaps em build)
+- `SENTRY_AUTH_TOKEN` (opcional, para sourcemaps em build)
+
+5. Rodar aplicação
 ```bash
 npm run dev
 ```
+
+### Validação rápida do Sentry
+
+Com a aplicação rodando, abra o console do navegador e execute:
+
+```js
+setTimeout(() => {
+  throw new Error('Sentry smoke test - client');
+}, 0);
+```
+
+Depois confirme no painel do Sentry se o evento foi recebido.
 
 ## Qualidade de engenharia
 

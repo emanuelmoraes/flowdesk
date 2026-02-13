@@ -105,6 +105,18 @@ const parseBillingHistoryResponse = (value: unknown): BillingHistoryApiResponse 
   };
 };
 
+const formatSlaHours = (hours: number): string => {
+  if (hours < 24) {
+    return `${hours}h`;
+  }
+
+  if (hours % 24 === 0) {
+    return `${hours / 24} dia${hours / 24 > 1 ? 's' : ''}`;
+  }
+
+  return `${hours}h`;
+};
+
 export default function PlanosPage() {
   return (
     <ProtectedRoute>
@@ -365,6 +377,16 @@ function PlanosContent() {
                     </li>
                   ))}
                 </ul>
+
+                <div className="mb-6 border border-gray-200 rounded-lg p-3 bg-gray-50">
+                  <p className="text-xs font-semibold text-gray-700 mb-2">SLA do plano</p>
+                  <ul className="space-y-1 text-xs text-gray-600">
+                    <li>Disponibilidade alvo: {plan.sla.uptimeTargetPercent}%</li>
+                    <li>Resposta de suporte: até {formatSlaHours(plan.sla.supportResponseHours)}</li>
+                    <li>Incidente crítico: até {formatSlaHours(plan.sla.criticalIncidentResponseHours)}</li>
+                  </ul>
+                </div>
+
                 {plan.id === currentPlan ? (
                   <button disabled className="w-full py-2 px-4 bg-gray-200 text-gray-500 rounded-lg cursor-not-allowed">
                     Plano atual

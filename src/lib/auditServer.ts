@@ -4,7 +4,7 @@ import { adminDb } from '@/lib/firebaseAdmin';
 type ServerAuditPayload = {
   actorId: string;
   action: string;
-  resourceType: 'project' | 'member' | 'invite' | 'billing' | 'user';
+  resourceType: 'project' | 'member' | 'invite' | 'billing' | 'user' | 'support_ticket';
   resourceId: string;
   projectId?: string;
   targetUserId?: string;

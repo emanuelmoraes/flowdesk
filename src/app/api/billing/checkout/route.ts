@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { trackServerBusinessEvent } from '@/lib/businessEventsServer';
 import { getAppUrl, getStripe, getStripePriceIdForPlan } from '@/lib/billing';
 import { SubscriptionPlanId } from '@/types';
 
@@ -87,6 +88,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       metadata: {
         uid: decoded.uid,
         planId,
+      },
+    });
+
+    await trackServerBusinessEvent({
+      eventName: 'conversion_subscription_checkout_started',
+      category: 'conversion',
+      userId: decoded.uid,
+      workspaceId: decoded.uid,
+      metadata: {
+        planId,
+        stripeCustomerId,
+        checkoutSessionId: session.id,
       },
     });
 

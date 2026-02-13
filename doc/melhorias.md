@@ -77,16 +77,16 @@ Transformar o FlowDesk em um produto comercializável, com confiança operaciona
 ## Fase 3 — Operação e suporte (Média prioridade)
 
 ### Observabilidade
-- [ ] Integrar monitoramento de erros (ex.: Sentry)
-- [ ] Definir eventos de negócio (ativação, retenção, conversão)
-- [ ] Dashboard operacional com métricas de saúde (falha, latência, disponibilidade)
-- [ ] Alertas pró-ativos para incidentes críticos
+- [x] Integrar monitoramento de erros (ex.: Sentry)
+- [x] Definir eventos de negócio (ativação, retenção, conversão)
+- [x] Dashboard operacional com métricas de saúde (falha, latência, disponibilidade)
+- [x] Alertas pró-ativos para incidentes críticos
 
 ### Suporte e sucesso do cliente
-- [ ] Definir SLA por plano
-- [ ] Criar central de ajuda e fluxo de abertura de chamado
-- [ ] Definir runbook de incidentes
-- [ ] Processo de comunicação de indisponibilidade
+- [x] Definir SLA por plano
+- [x] Criar central de ajuda e fluxo de abertura de chamado
+- [x] Definir runbook de incidentes
+- [x] Processo de comunicação de indisponibilidade
 
 ## Fase 4 — Escala e diferenciação (Média prioridade)
 

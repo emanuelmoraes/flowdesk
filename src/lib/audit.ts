@@ -3,7 +3,7 @@ import { logger } from '@/lib/logger';
 type AuditPayload = {
   actorId: string;
   action: string;
-  resourceType: 'project' | 'member' | 'invite' | 'billing' | 'user';
+  resourceType: 'project' | 'member' | 'invite' | 'billing' | 'user' | 'support_ticket';
   resourceId: string;
   projectId?: string;
   targetUserId?: string;

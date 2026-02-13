@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { recordAuditTrail } from '@/lib/audit';
+import { trackBusinessEvent } from '@/lib/businessEvents';
 import { logger } from '@/lib/logger';
 import { canAddMember, canCreateProject, canCreateTicket, getPlan } from '@/lib/plans';
 import { getPersonalWorkspaceId } from '@/lib/workspace';
@@ -116,6 +117,8 @@ const PROJECT_NAME_MAX_LENGTH = 120;
 const PROJECT_SLUG_MIN_LENGTH = 3;
 const PROJECT_SLUG_MAX_LENGTH = 50;
 const PROJECT_DESCRIPTION_MAX_LENGTH = 10000;
+const SUPPORT_SUBJECT_MAX_LENGTH = 120;
+const SUPPORT_MESSAGE_MAX_LENGTH = 4000;
 
 const TICKET_TITLE_MIN_LENGTH = 3;
 const TICKET_TITLE_MAX_LENGTH = 160;
@@ -325,6 +328,27 @@ export const createProject = async (
       },
       page: 'services',
     });
+
+    await trackBusinessEvent({
+      eventName: 'project_created',
+      category: 'activation',
+      userId: ownerId,
+      projectId: docRef.id,
+      workspaceId,
+      metadata: {
+        ownerProjectsCountBeforeCreate: ownerProjectsCount,
+      },
+    });
+
+    if (ownerProjectsCount === 0) {
+      await trackBusinessEvent({
+        eventName: 'activation_first_project_created',
+        category: 'activation',
+        userId: ownerId,
+        projectId: docRef.id,
+        workspaceId,
+      });
+    }
     
     return docRef.id;
   } catch (error) {
@@ -456,6 +480,30 @@ export const createTicket = async (
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+
+    await trackBusinessEvent({
+      eventName: 'ticket_created',
+      category: 'retention',
+      userId: ownerId,
+      projectId,
+      workspaceId: getPersonalWorkspaceId(ownerId),
+      metadata: {
+        currentTicketsCountBeforeCreate: currentTicketsCount,
+        status,
+        priority,
+        type,
+      },
+    });
+
+    if (currentTicketsCount === 0) {
+      await trackBusinessEvent({
+        eventName: 'activation_first_ticket_created',
+        category: 'activation',
+        userId: ownerId,
+        projectId,
+        workspaceId: getPersonalWorkspaceId(ownerId),
+      });
+    }
     
     return docRef.id;
   } catch (error) {
@@ -963,4 +1011,72 @@ export const cancelProjectInvitation = async (
     },
     page: 'services',
   });
+};
+
+type SupportTicketCategory = 'billing' | 'technical' | 'account' | 'other';
+type SupportTicketPriority = 'low' | 'medium' | 'high';
+
+const supportCategoryList: SupportTicketCategory[] = ['billing', 'technical', 'account', 'other'];
+const supportPriorityList: SupportTicketPriority[] = ['low', 'medium', 'high'];
+
+export const createSupportTicket = async (
+  userId: string,
+  userEmail: string,
+  userName: string,
+  subject: string,
+  message: string,
+  category: SupportTicketCategory,
+  priority: SupportTicketPriority,
+): Promise<string> => {
+  const normalizedSubject = normalizeWhitespace(subject);
+  const normalizedMessage = normalizeDescription(message);
+  const normalizedEmail = normalizeWhitespace(userEmail).toLowerCase();
+  const normalizedName = normalizeWhitespace(userName || 'Usuário');
+
+  if (!normalizedSubject || normalizedSubject.length > SUPPORT_SUBJECT_MAX_LENGTH) {
+    throw new Error(`Assunto inválido (máximo de ${SUPPORT_SUBJECT_MAX_LENGTH} caracteres)`);
+  }
+
+  if (!normalizedMessage || normalizedMessage.length > SUPPORT_MESSAGE_MAX_LENGTH) {
+    throw new Error(`Mensagem inválida (máximo de ${SUPPORT_MESSAGE_MAX_LENGTH} caracteres)`);
+  }
+
+  if (!supportCategoryList.includes(category)) {
+    throw new Error('Categoria de suporte inválida');
+  }
+
+  if (!supportPriorityList.includes(priority)) {
+    throw new Error('Prioridade de suporte inválida');
+  }
+
+  const workspaceId = getPersonalWorkspaceId(userId);
+
+  const supportTicketRef = await addDoc(collection(db, 'supportTickets'), {
+    workspaceId,
+    userId,
+    userEmail: normalizedEmail,
+    userName: normalizedName,
+    subject: normalizedSubject,
+    message: normalizedMessage,
+    category,
+    priority,
+    status: 'open',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+
+  await recordAuditTrail({
+    actorId: userId,
+    action: 'support.ticket.created',
+    resourceType: 'support_ticket',
+    resourceId: supportTicketRef.id,
+    metadata: {
+      workspaceId,
+      category,
+      priority,
+    },
+    page: 'services',
+  });
+
+  return supportTicketRef.id;
 };

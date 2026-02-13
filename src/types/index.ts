@@ -134,6 +134,12 @@ export interface PlanLimits {
   membersPerProject: number | 'unlimited';
 }
 
+export interface PlanSla {
+  uptimeTargetPercent: number;
+  supportResponseHours: number;
+  criticalIncidentResponseHours: number;
+}
+
 export interface PlanDefinition {
   id: SubscriptionPlanId;
   name: string;
@@ -142,6 +148,7 @@ export interface PlanDefinition {
   description: string;
   features: string[];
   limits: PlanLimits;
+  sla: PlanSla;
 }
 
 export interface Workspace {

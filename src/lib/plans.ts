@@ -14,6 +14,11 @@ export const PLAN_CATALOG: Record<SubscriptionPlanId, PlanDefinition> = {
       ticketsPerProject: 50,
       membersPerProject: 1,
     },
+    sla: {
+      uptimeTargetPercent: 99,
+      supportResponseHours: 72,
+      criticalIncidentResponseHours: 24,
+    },
   },
   pro: {
     id: 'pro',
@@ -27,6 +32,11 @@ export const PLAN_CATALOG: Record<SubscriptionPlanId, PlanDefinition> = {
       ticketsPerProject: 'unlimited',
       membersPerProject: 5,
     },
+    sla: {
+      uptimeTargetPercent: 99.5,
+      supportResponseHours: 24,
+      criticalIncidentResponseHours: 8,
+    },
   },
   team: {
     id: 'team',
@@ -38,6 +48,11 @@ export const PLAN_CATALOG: Record<SubscriptionPlanId, PlanDefinition> = {
       projects: 'unlimited',
       ticketsPerProject: 'unlimited',
       membersPerProject: 'unlimited',
+    },
+    sla: {
+      uptimeTargetPercent: 99.9,
+      supportResponseHours: 8,
+      criticalIncidentResponseHours: 2,
     },
   },
 };

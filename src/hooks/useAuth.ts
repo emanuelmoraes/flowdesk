@@ -11,6 +11,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
+import { trackBusinessEvent } from '@/lib/businessEvents';
 import { logger } from '@/lib/logger';
 import { getAuthErrorMessage, getUserFacingErrorMessage } from '@/lib/errorHandling';
 import { UserRole, DEFAULT_USER_ROLE, isValidRole, getRolePermissions, SubscriptionPlanId } from '@/types';
@@ -147,7 +148,15 @@ export function useAuth(): UseAuthReturn {
     setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      await trackBusinessEvent({
+        eventName: 'user_login_completed',
+        category: 'retention',
+        userId: credential.user.uid,
+        metadata: {
+          provider: 'password',
+        },
+      });
       return true;
     } catch (err) {
       const errorMessage = getAuthErrorMessage(err);
@@ -177,6 +186,15 @@ export function useAuth(): UseAuthReturn {
         role: DEFAULT_USER_ROLE,
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp(),
+      });
+
+      await trackBusinessEvent({
+        eventName: 'user_signup_completed',
+        category: 'activation',
+        userId: userCredential.user.uid,
+        metadata: {
+          provider: 'password',
+        },
       });
 
       return true;

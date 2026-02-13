@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { recordServerAuditTrail } from '@/lib/auditServer';
+import { trackServerBusinessEvent } from '@/lib/businessEventsServer';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { getPlanFromStripePriceId, getStripe } from '@/lib/billing';
 
@@ -52,6 +53,18 @@ async function handleCheckoutCompleted(event: Stripe.CheckoutSessionCompletedEve
       planId,
     },
     page: 'api_billing_webhook',
+  });
+
+  await trackServerBusinessEvent({
+    eventName: 'conversion_subscription_checkout_completed',
+    category: 'conversion',
+    userId: uid,
+    workspaceId: uid,
+    metadata: {
+      customerId,
+      subscriptionId,
+      planId,
+    },
   });
 }
 
