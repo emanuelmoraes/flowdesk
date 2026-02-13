@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createProject, generateSlug, validateSlug } from '@/lib/services';
+import { getUserFacingErrorMessage } from '@/lib/errorHandling';
 import RichTextEditor from '@/components/RichTextEditor';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import AppLayout from '@/components/AppLayout';
@@ -19,6 +20,7 @@ export default function CriarProjetoPage() {
 
 function CriarProjetoContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { showError } = useNotification();
   const [name, setName] = useState('');
@@ -26,14 +28,15 @@ function CriarProjetoContent() {
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const onboardingRequested = searchParams.get('onboarding') === '1';
 
-  const handleNameChange = (value: string) => {
+  const handleNameChange = (value: string): void => {
     setName(value);
     const autoSlug = generateSlug(value);
     setSlug(autoSlug);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     setError('');
     
@@ -61,10 +64,10 @@ function CriarProjetoContent() {
       const projectId = await createProject(name, slug, description, user.uid);
       
       // Redireciona para o projeto criado
-      router.push(`/projetos/${projectId}`);
+      const onboardingSuffix = onboardingRequested ? '?onboarding=1' : '';
+      router.push(`/projetos/${projectId}${onboardingSuffix}`);
     } catch (error: unknown) {
-      const err = error as Error;
-      setError(err.message || 'Erro ao criar projeto. Tente novamente.');
+      setError(getUserFacingErrorMessage(error, 'Erro ao criar projeto. Tente novamente.'));
       setLoading(false);
     }
   };

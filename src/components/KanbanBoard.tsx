@@ -11,7 +11,9 @@ import {
 import KanbanColumn from './KanbanColumn';
 import { Ticket, TicketStatus } from '@/types';
 import { reorderTickets } from '@/lib/services';
+import { executeOptimisticUpdate } from '@/lib/optimistic';
 import { logger } from '@/lib/logger';
+import { isTicketStatus } from '@/lib/typeGuards';
 
 interface KanbanBoardProps {
   tickets: Ticket[];
@@ -74,8 +76,8 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, on
     });
 
     // Ordena por order
-    Object.keys(grouped).forEach((status) => {
-      grouped[status as TicketStatus].sort((a, b) => a.order - b.order);
+    columns.forEach(({ id }) => {
+      grouped[id].sort((a, b) => a.order - b.order);
     });
 
     return grouped;
@@ -96,14 +98,17 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, on
     const { active, over } = event;
 
     // Pega as coordenadas finais do ponteiro
-    const pointerX = (event.activatorEvent as PointerEvent)?.clientX + (event.delta?.x || 0);
-    const pointerY = (event.activatorEvent as PointerEvent)?.clientY + (event.delta?.y || 0);
+    const activatorEvent = event.activatorEvent;
+    const pointerClientX = activatorEvent instanceof PointerEvent ? activatorEvent.clientX : 0;
+    const pointerClientY = activatorEvent instanceof PointerEvent ? activatorEvent.clientY : 0;
+    const pointerX = pointerClientX + (event.delta?.x || 0);
+    const pointerY = pointerClientY + (event.delta?.y || 0);
     
     // Detecta a coluna usando coordenadas reais (fallback se over não funcionar)
     let targetStatus: TicketStatus | null = null;
     
-    if (over && columns.some(col => col.id === over.id)) {
-      targetStatus = over.id as TicketStatus;
+    if (over && typeof over.id === 'string' && isTicketStatus(over.id)) {
+      targetStatus = over.id;
     } else {
       // Fallback: detectar manualmente
       targetStatus = getColumnAtPoint(pointerX, pointerY);
@@ -111,7 +116,7 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, on
 
     if (!targetStatus) return;
 
-    const activeId = active.id as string;
+    const activeId = String(active.id);
     const activeTicket = tickets.find((t) => t.id === activeId);
     if (!activeTicket) return;
 
@@ -145,27 +150,24 @@ export default function KanbanBoard({ tickets, onTicketsUpdate, onEditTicket, on
         ...targetTicketsWithMoved.map((t) => ({ id: t.id, order: t.order, status: targetStatus })),
       ];
 
-      const dedupedBatchUpdates = Object.values(
-        batchUpdates.reduce((acc, update) => {
-          acc[update.id] = update;
-          return acc;
-        }, {} as Record<string, { id: string; order: number; status: TicketStatus }>)
-      );
+      const dedupedMap: Record<string, { id: string; order: number; status: TicketStatus }> = {};
+      batchUpdates.forEach((update) => {
+        dedupedMap[update.id] = update;
+      });
+      const dedupedBatchUpdates = Object.values(dedupedMap);
       
-      // Atualiza localmente primeiro para feedback imediato
-      onTicketsUpdate(updatedTickets);
-      
-      try {
-        await reorderTickets(dedupedBatchUpdates);
-      } catch (error) {
-        logger.error('Erro ao mover ticket', {
-          action: 'move_ticket',
-          metadata: { activeId, sourceStatus, targetStatus, error: String(error) },
-          page: 'kanban',
-        });
-        // Reverte em caso de erro
-        onTicketsUpdate(tickets);
-      }
+      await executeOptimisticUpdate({
+        applyOptimistic: () => onTicketsUpdate(updatedTickets),
+        commit: async () => reorderTickets(dedupedBatchUpdates),
+        rollback: () => onTicketsUpdate(tickets),
+        onError: (error) => {
+          logger.error('Erro ao mover ticket', {
+            action: 'move_ticket',
+            metadata: { activeId, sourceStatus, targetStatus, error: String(error) },
+            page: 'kanban',
+          });
+        },
+      });
     }
   };
 

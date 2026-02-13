@@ -6,6 +6,7 @@ import { useProjectById, useTickets } from '@/hooks/useProject';
 import TimelineView from '@/components/TimelineView';
 import { KanbanBoardSkeleton } from '@/components/ui/Skeletons';
 import { Ticket } from '@/types';
+import { getSingleRouteParam } from '@/lib/typeGuards';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import AppLayout from '@/components/AppLayout';
 import { FaGear, FaTableColumns, FaCalendarDays, FaTimeline } from 'react-icons/fa6';
@@ -21,7 +22,17 @@ export default function ProjectTimelinePage() {
 function ProjectTimelineContent() {
   const params = useParams();
   const router = useRouter();
-  const projectId = params.projectId as string;
+  const projectId = getSingleRouteParam(params.projectId);
+
+  if (!projectId) {
+    return (
+      <AppLayout title="Erro">
+        <div className="flex items-center justify-center py-20">
+          <p className="text-gray-600">Identificador de projeto inválido.</p>
+        </div>
+      </AppLayout>
+    );
+  }
   
   const { project, loading: projectLoading, error } = useProjectById(projectId);
   const { tickets, loading: ticketsLoading } = useTickets(projectId);

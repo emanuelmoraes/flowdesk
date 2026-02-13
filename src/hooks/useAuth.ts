@@ -12,13 +12,35 @@ import {
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { logger } from '@/lib/logger';
-import { UserRole, DEFAULT_USER_ROLE, isValidRole, getRolePermissions } from '@/types';
+import { getAuthErrorMessage, getUserFacingErrorMessage } from '@/lib/errorHandling';
+import { UserRole, DEFAULT_USER_ROLE, isValidRole, getRolePermissions, SubscriptionPlanId } from '@/types';
+
+type TimestampLike = {
+  toDate: () => Date;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null;
+};
+
+const hasToDate = (value: unknown): value is TimestampLike => {
+  return isRecord(value) && typeof value.toDate === 'function';
+};
+
+const parsePlan = (value: unknown): SubscriptionPlanId | undefined => {
+  return value === 'free' || value === 'pro' || value === 'team' ? value : undefined;
+};
 
 export interface UserProfile {
   uid: string;
   email: string;
   displayName?: string;
   role: UserRole;
+  plan?: SubscriptionPlanId;
+  subscriptionStatus?: string;
+  subscriptionId?: string;
+  stripeCustomerId?: string;
+  subscriptionCurrentPeriodEnd?: Date;
   createdAt?: Date;
   lastLogin?: Date;
 }
@@ -51,16 +73,26 @@ export function useAuth(): UseAuthReturn {
       const userDoc = await getDoc(userDocRef);
 
       if (userDoc.exists()) {
-        const data = userDoc.data();
-        const role = isValidRole(data.role) ? data.role : DEFAULT_USER_ROLE;
+        const rawData = userDoc.data();
+        const data = isRecord(rawData) ? rawData : {};
+        const rawRole = data.role;
+        const role: UserRole =
+          typeof rawRole === 'string' && isValidRole(rawRole) ? rawRole : DEFAULT_USER_ROLE;
         
         setUserProfile({
           uid: firebaseUser.uid,
           email: firebaseUser.email || '',
-          displayName: data.displayName,
+          displayName: typeof data.displayName === 'string' ? data.displayName : undefined,
           role,
-          createdAt: data.createdAt?.toDate(),
-          lastLogin: data.lastLogin?.toDate(),
+          plan: parsePlan(data.plan),
+          subscriptionStatus: typeof data.subscriptionStatus === 'string' ? data.subscriptionStatus : undefined,
+          subscriptionId: typeof data.subscriptionId === 'string' ? data.subscriptionId : undefined,
+          stripeCustomerId: typeof data.stripeCustomerId === 'string' ? data.stripeCustomerId : undefined,
+          subscriptionCurrentPeriodEnd: hasToDate(data.subscriptionCurrentPeriodEnd)
+            ? data.subscriptionCurrentPeriodEnd.toDate()
+            : undefined,
+          createdAt: hasToDate(data.createdAt) ? data.createdAt.toDate() : undefined,
+          lastLogin: hasToDate(data.lastLogin) ? data.lastLogin.toDate() : undefined,
         });
 
         // Atualiza o último login
@@ -88,7 +120,7 @@ export function useAuth(): UseAuthReturn {
         metadata: { uid: firebaseUser.uid, error: String(error) },
         page: 'useAuth',
       });
-      setError('Erro ao carregar perfil do usuário. Algumas permissões podem ficar indisponíveis.');
+      setError(getUserFacingErrorMessage(error, 'Erro ao carregar perfil do usuário. Algumas permissões podem ficar indisponíveis.'));
     }
   }, []);
 
@@ -170,7 +202,7 @@ export function useAuth(): UseAuthReturn {
         metadata: { error: String(error) },
         page: 'useAuth',
       });
-      setError('Erro ao sair da conta. Tente novamente.');
+      setError(getUserFacingErrorMessage(error, 'Erro ao sair da conta. Tente novamente.'));
     }
   }, []);
 
@@ -203,32 +235,4 @@ export function useAuth(): UseAuthReturn {
     isAdmin,
     isManager,
   };
-}
-
-// Traduz erros do Firebase para português
-function getAuthErrorMessage(error: unknown): string {
-  const firebaseError = error as { code?: string };
-  
-  switch (firebaseError.code) {
-    case 'auth/invalid-email':
-      return 'Email inválido.';
-    case 'auth/user-disabled':
-      return 'Esta conta foi desativada.';
-    case 'auth/user-not-found':
-      return 'Usuário não encontrado.';
-    case 'auth/wrong-password':
-      return 'Senha incorreta.';
-    case 'auth/invalid-credential':
-      return 'Credenciais inválidas.';
-    case 'auth/too-many-requests':
-      return 'Muitas tentativas. Tente novamente mais tarde.';
-    case 'auth/email-already-in-use':
-      return 'Este email já está em uso.';
-    case 'auth/weak-password':
-      return 'A senha deve ter pelo menos 6 caracteres.';
-    case 'auth/operation-not-allowed':
-      return 'Operação não permitida. Contate o administrador.';
-    default:
-      return 'Erro ao processar. Tente novamente.';
-  }
 }

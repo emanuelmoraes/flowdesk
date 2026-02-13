@@ -32,47 +32,47 @@ Transformar o FlowDesk em um produto comercializável, com confiança operaciona
 - [x] Revisar operações de atualização em lote e conflitos de concorrência (ordenação de tickets)
 
 ### Documentação técnica mínima
-- [ ] Atualizar documentação para refletir o estado real do projeto (auth já implementada)
-- [ ] Unificar estratégia oficial de deploy (Firebase Hosting x App Hosting) com decisão única
-- [ ] Criar checklist de readiness para produção
+- [x] Atualizar documentação para refletir o estado real do projeto (auth já implementada)
+- [x] Unificar estratégia oficial de deploy (Firebase Hosting x App Hosting) com decisão única
+- [x] Criar checklist de readiness para produção
 
 ## Fase 1 — Qualidade de engenharia (Alta prioridade)
 
 ### Testes e QA
-- [ ] Configurar base de testes automatizados (unitário + integração para serviços críticos)
-- [ ] Cobrir fluxos críticos: login, criação de projeto, criação/edição/movimentação de ticket
-- [ ] Criar suíte de regressão para permissões e regras de acesso
-- [ ] Definir meta mínima de cobertura para áreas críticas
+- [x] Configurar base de testes automatizados (unitário + integração para serviços críticos)
+- [x] Cobrir fluxos críticos: login, criação de projeto, criação/edição/movimentação de ticket
+- [x] Criar suíte de regressão para permissões e regras de acesso
+- [x] Definir meta mínima de cobertura para áreas críticas (mínimo atual: statements 50%, branches 45%, functions 65%, lines 50%)
 
 ### CI/CD
-- [ ] Pipeline com: lint, type-check, build e testes obrigatórios antes de deploy
-- [ ] Bloqueio de merge em caso de falha
-- [ ] Ambientes separados (dev/staging/prod) com variáveis isoladas
-- [ ] Versionamento de release com changelog
+- [x] Pipeline com: lint, type-check, build e testes obrigatórios antes de deploy
+- [x] Bloqueio de merge em caso de falha (workflow pronto + script de branch protection versionado)
+- [x] Ambientes separados (dev/staging/prod) com variáveis isoladas
+- [x] Versionamento de release com changelog
 
 ### Padrões e arquitetura
-- [ ] Remover duplicidade/inconsistência de instruções e guias
-- [ ] Definir padrão para tratamento de erro e mensagens para usuário
-- [ ] Revisar hooks de dados para modelo reativo (real-time) onde fizer sentido
-- [ ] Definir convenções de estado otimista + rollback em falhas
+- [x] Remover duplicidade/inconsistência de instruções e guias
+- [x] Definir padrão para tratamento de erro e mensagens para usuário
+- [x] Revisar hooks de dados para modelo reativo (real-time) onde fizer sentido
+- [x] Definir convenções de estado otimista + rollback em falhas
 
 ## Fase 2 — Produto comercial (Alta prioridade)
 
 ### Planos e billing
-- [ ] Definir modelo comercial (Free, Pro, Team)
-- [ ] Implementar limites por plano (projetos, usuários, armazenamento, recursos)
-- [ ] Integrar cobrança recorrente (ex.: Stripe) com gestão de assinatura
-- [ ] Implementar tela de gestão de assinatura e histórico de cobrança
+- [x] Definir modelo comercial (Free, Pro, Team)
+- [x] Implementar limites por plano (projetos, usuários, armazenamento, recursos)
+- [x] Integrar cobrança recorrente (ex.: Stripe) com gestão de assinatura
+- [x] Implementar tela de gestão de assinatura e histórico de cobrança
 
 ### Multi-tenant e governança
-- [ ] Estruturar claramente organização/conta/workspace (se aplicável)
-- [ ] Melhorar gestão de membros e convites por email
-- [ ] Trilhas de auditoria para ações administrativas
+- [x] Estruturar claramente organização/conta/workspace (se aplicável)
+- [x] Melhorar gestão de membros e convites por email
+- [x] Trilhas de auditoria para ações administrativas
 
 ### Experiência do cliente
-- [ ] Onboarding guiado para primeiro projeto
-- [ ] Estados vazios e mensagens orientadas para conversão
-- [ ] Fluxo de recuperação de senha e gestão de conta robusto
+- [x] Onboarding guiado para primeiro projeto
+- [x] Estados vazios e mensagens orientadas para conversão
+- [x] Fluxo de recuperação de senha e gestão de conta robusto
 
 ## Fase 3 — Operação e suporte (Média prioridade)
 

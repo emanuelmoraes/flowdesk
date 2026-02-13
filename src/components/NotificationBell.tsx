@@ -15,8 +15,9 @@ export default function NotificationBell() {
 
   // Fecha dropdown ao clicar fora
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+    function handleClickOutside(event: MouseEvent): void {
+      const eventTarget = event.target;
+      if (dropdownRef.current && eventTarget instanceof Node && !dropdownRef.current.contains(eventTarget)) {
         setIsOpen(false);
       }
     }

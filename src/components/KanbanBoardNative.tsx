@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Ticket, TicketStatus } from '@/types';
 import { reorderTickets } from '@/lib/services';
+import { executeOptimisticUpdate } from '@/lib/optimistic';
 import { logger } from '@/lib/logger';
 
 interface KanbanBoardProps {
@@ -94,8 +95,8 @@ export default function KanbanBoardNative({ tickets, onTicketsUpdate, onEditTick
       grouped[ticket.status]?.push(ticket);
     });
 
-    Object.keys(grouped).forEach((status) => {
-      grouped[status as TicketStatus].sort((a, b) => a.order - b.order);
+    columns.forEach(({ id }) => {
+      grouped[id].sort((a, b) => a.order - b.order);
     });
 
     return grouped;
@@ -161,26 +162,24 @@ export default function KanbanBoardNative({ tickets, onTicketsUpdate, onEditTick
       ...targetTicketsWithMoved.map((t) => ({ id: t.id, order: t.order, status: targetStatus })),
     ];
 
-    const dedupedBatchUpdates = Object.values(
-      batchUpdates.reduce((acc, update) => {
-        acc[update.id] = update;
-        return acc;
-      }, {} as Record<string, { id: string; order: number; status: TicketStatus }>)
-    );
+    const dedupedMap: Record<string, { id: string; order: number; status: TicketStatus }> = {};
+    batchUpdates.forEach((update) => {
+      dedupedMap[update.id] = update;
+    });
+    const dedupedBatchUpdates = Object.values(dedupedMap);
 
-    // Atualiza localmente primeiro
-    onTicketsUpdate(updatedTickets);
-
-    try {
-      await reorderTickets(dedupedBatchUpdates);
-    } catch (error) {
-      logger.error('Erro ao mover ticket', {
-        action: 'move_ticket',
-        metadata: { ticketId, sourceStatus, targetStatus, error: String(error) },
-        page: 'kanban',
-      });
-      onTicketsUpdate(tickets);
-    }
+    await executeOptimisticUpdate({
+      applyOptimistic: () => onTicketsUpdate(updatedTickets),
+      commit: async () => reorderTickets(dedupedBatchUpdates),
+      rollback: () => onTicketsUpdate(tickets),
+      onError: (error) => {
+        logger.error('Erro ao mover ticket', {
+          action: 'move_ticket',
+          metadata: { ticketId, sourceStatus, targetStatus, error: String(error) },
+          page: 'kanban',
+        });
+      },
+    });
   };
 
   const renderTicketCard = (ticket: Ticket) => {

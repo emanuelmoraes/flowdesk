@@ -2,6 +2,7 @@
 
 import { TicketType } from '@/types';
 import { ticketTypeIcons, ticketTypeLabels } from '@/components/icons/TicketTypeIcons';
+import { isTicketType, ticketTypeValues } from '@/lib/typeGuards';
 
 interface TicketTypeSelectProps {
   value: TicketType;
@@ -17,6 +18,13 @@ export default function TicketTypeSelect({ value, onChange, label = 'Tipo', requ
   const selectedIcon = ticketTypeIcons[value];
   const SelectedIcon = selectedIcon;
 
+  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>): void => {
+    const nextValue = event.target.value;
+    if (isTicketType(nextValue)) {
+      onChange(nextValue);
+    }
+  };
+
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -25,13 +33,13 @@ export default function TicketTypeSelect({ value, onChange, label = 'Tipo', requ
       <div className="relative">
         <select
           value={value}
-          onChange={(e) => onChange(e.target.value as TicketType)}
+          onChange={handleChange}
           className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
           required={required}
         >
-          {(Object.entries(ticketTypeLabels) as [TicketType, string][]).map(([key, label]) => (
+          {ticketTypeValues.map((key) => (
             <option key={key} value={key}>
-              {label}
+              {ticketTypeLabels[key]}
             </option>
           ))}
         </select>

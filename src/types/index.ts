@@ -96,6 +96,7 @@ export interface Ticket {
 
 export interface Project {
   id: string;
+  workspaceId?: string;
   name: string;
   slug: string;
   description?: string;
@@ -113,10 +114,55 @@ export interface Column {
 
 export interface User {
   id: string;
+  workspaceId?: string;
   email: string;
   displayName: string;
   photoURL?: string;
   role: UserRole;
+  plan?: SubscriptionPlanId;
   createdAt: Date;
   lastLogin?: Date;
+}
+
+// === Tipos de Plano Comercial ===
+
+export type SubscriptionPlanId = 'free' | 'pro' | 'team';
+
+export interface PlanLimits {
+  projects: number | 'unlimited';
+  ticketsPerProject: number | 'unlimited';
+  membersPerProject: number | 'unlimited';
+}
+
+export interface PlanDefinition {
+  id: SubscriptionPlanId;
+  name: string;
+  monthlyPriceInCents: number;
+  highlighted?: boolean;
+  description: string;
+  features: string[];
+  limits: PlanLimits;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  ownerId: string;
+  members: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type ProjectInviteStatus = 'pending' | 'accepted' | 'declined' | 'canceled';
+
+export interface ProjectInvite {
+  id: string;
+  projectId: string;
+  email: string;
+  invitedBy: string;
+  status: ProjectInviteStatus;
+  respondedBy?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  respondedAt?: Date;
 }

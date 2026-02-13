@@ -5,11 +5,12 @@ import {
   query, 
   where, 
   orderBy,
-  getDocs,
   doc,
-  getDoc
+  onSnapshot,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { projectConverter, ticketConverter } from '@/lib/firestoreConverters';
+import { getUserFacingErrorMessage } from '@/lib/errorHandling';
 import { logger } from '@/lib/logger';
 import { Project, Ticket } from '@/types';
 
@@ -20,37 +21,42 @@ export const useProjectById = (projectId: string) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchProject = async () => {
-      try {
-        setLoading(true);
-        const docRef = doc(db, 'projects', projectId);
-        const docSnap = await getDoc(docRef);
-        
+    if (!projectId) {
+      setProject(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const docRef = doc(db, 'projects', projectId).withConverter(projectConverter);
+    const unsubscribe = onSnapshot(
+      docRef,
+      (docSnap) => {
         if (docSnap.exists()) {
-          setProject({
-            id: docSnap.id,
-            ...docSnap.data(),
-            createdAt: docSnap.data().createdAt?.toDate(),
-            updatedAt: docSnap.data().updatedAt?.toDate(),
-          } as Project);
+          setProject(docSnap.data());
+          setError(null);
         } else {
+          setProject(null);
           setError('Projeto não encontrado');
         }
-      } catch (error) {
+
+        setLoading(false);
+      },
+      (snapshotError) => {
         logger.error('Erro ao carregar projeto por ID', {
           action: 'load_project_by_id',
-          metadata: { projectId, error: String(error) },
+          metadata: { projectId, error: String(snapshotError) },
           page: 'useProjectById',
         });
-        setError('Erro ao carregar projeto');
-      } finally {
+        setError(getUserFacingErrorMessage(snapshotError, 'Erro ao carregar projeto'));
         setLoading(false);
       }
-    };
+    );
 
-    if (projectId) {
-      fetchProject();
-    }
+    return () => unsubscribe();
   }, [projectId]);
 
   return { project, loading, error };
@@ -63,41 +69,47 @@ export const useProject = (slug: string) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchProject = async () => {
-      try {
-        setLoading(true);
-        const q = query(
-          collection(db, 'projects'),
-          where('slug', '==', slug)
-        );
-        const querySnapshot = await getDocs(q);
-        
+    if (!slug) {
+      setProject(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const q = query(
+      collection(db, 'projects').withConverter(projectConverter),
+      where('slug', '==', slug)
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
         if (!querySnapshot.empty) {
-          const doc = querySnapshot.docs[0];
-          setProject({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate(),
-            updatedAt: doc.data().updatedAt?.toDate(),
-          } as Project);
+          const projectDoc = querySnapshot.docs[0];
+          setProject(projectDoc.data());
+          setError(null);
         } else {
+          setProject(null);
           setError('Projeto não encontrado');
         }
-      } catch (error) {
+
+        setLoading(false);
+      },
+      (snapshotError) => {
         logger.error('Erro ao carregar projeto por slug', {
           action: 'load_project_by_slug',
-          metadata: { slug, error: String(error) },
+          metadata: { slug, error: String(snapshotError) },
           page: 'useProject',
         });
-        setError('Erro ao carregar projeto');
-      } finally {
+        setError(getUserFacingErrorMessage(snapshotError, 'Erro ao carregar projeto'));
         setLoading(false);
       }
-    };
+    );
 
-    if (slug) {
-      fetchProject();
-    }
+    return () => unsubscribe();
   }, [slug]);
 
   return { project, loading, error };
@@ -109,40 +121,43 @@ export const useTickets = (projectId: string) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchTickets = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const q = query(
-          collection(db, 'tickets'),
-          where('projectId', '==', projectId),
-          orderBy('order', 'asc')
-        );
-        const querySnapshot = await getDocs(q);
-        
-        const ticketsData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate(),
-          updatedAt: doc.data().updatedAt?.toDate(),
-        })) as Ticket[];
-        
+    if (!projectId) {
+      setTickets([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    const q = query(
+      collection(db, 'tickets').withConverter(ticketConverter),
+      where('projectId', '==', projectId),
+      orderBy('order', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const ticketsData = querySnapshot.docs.map((ticketDoc) => ticketDoc.data());
+
         setTickets(ticketsData);
-      } catch (fetchError) {
+        setError(null);
+        setLoading(false);
+      },
+      (snapshotError) => {
         logger.error('Erro ao carregar tickets do projeto', {
           action: 'load_project_tickets',
-          metadata: { projectId, error: String(fetchError) },
+          metadata: { projectId, error: String(snapshotError) },
           page: 'useTickets',
         });
-        setError('Erro ao carregar tickets');
-      } finally {
+        setError(getUserFacingErrorMessage(snapshotError, 'Erro ao carregar tickets'));
         setLoading(false);
       }
-    };
+    );
 
-    if (projectId) {
-      fetchTickets();
-    }
+    return () => unsubscribe();
   }, [projectId]);
 
   return { tickets, loading, error, setTickets };

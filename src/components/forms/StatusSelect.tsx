@@ -1,6 +1,7 @@
 'use client';
 
 import { TicketStatus } from '@/types';
+import { isTicketStatus, ticketStatusValues } from '@/lib/typeGuards';
 
 interface StatusSelectProps {
   value: TicketStatus;
@@ -18,6 +19,13 @@ export const statusLabels: Record<TicketStatus, string> = {
 };
 
 export default function StatusSelect({ value, onChange, label = 'Status', required = false }: StatusSelectProps) {
+  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>): void => {
+    const nextValue = event.target.value;
+    if (isTicketStatus(nextValue)) {
+      onChange(nextValue);
+    }
+  };
+
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -25,13 +33,13 @@ export default function StatusSelect({ value, onChange, label = 'Status', requir
       </label>
       <select
         value={value}
-        onChange={(e) => onChange(e.target.value as TicketStatus)}
+        onChange={handleChange}
         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         required={required}
       >
-        {(Object.entries(statusLabels) as [TicketStatus, string][]).map(([key, label]) => (
+        {ticketStatusValues.map((key) => (
           <option key={key} value={key}>
-            {label}
+            {statusLabels[key]}
           </option>
         ))}
       </select>

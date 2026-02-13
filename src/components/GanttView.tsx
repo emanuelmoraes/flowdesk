@@ -121,7 +121,7 @@ export default function GanttView({ tickets, onTicketClick }: GanttViewProps) {
       <div className="bg-white rounded-xl shadow-md p-8 text-center">
         <p className="text-gray-500 mb-2">Nenhum ticket com datas definidas.</p>
         <p className="text-sm text-gray-400">
-          Adicione datas de início e entrega nos tickets para visualizar no Gantt.
+          Defina data de início e entrega nos tickets para visualizar cronograma e antecipar atrasos.
         </p>
       </div>
     );

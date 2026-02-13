@@ -1,122 +1,146 @@
-# Firebase Hosting
+# Deploy Oficial — Firebase App Hosting
 
-## Configuração Inicial
+Este projeto adota **Firebase App Hosting** como estratégia oficial de deploy.
 
-### 1. Instalar Firebase CLI
+## Motivo da decisão
 
+- Compatível com Next.js App Router sem exportação estática
+- Suporte nativo a rotas dinâmicas e SSR
+- Integração direta com `apphosting.yaml` já existente no repositório
+
+## Pré-requisitos
+
+1. `firebase-tools` instalado
 ```bash
 npm install -g firebase-tools
 ```
 
-### 2. Fazer login no Firebase
-
+2. Login no Firebase
 ```bash
 firebase login
 ```
 
-### 3. Inicializar Firebase no projeto (se ainda não foi feito)
+3. Projeto no Blaze Plan
 
+## Configuração inicial
+
+### 1) Habilitar App Hosting no Firebase Console
+
+- Acesse o painel do projeto em `Build > App Hosting`
+- Crie o backend e conecte ao repositório
+
+### 2) Conectar GitHub
+
+- Repositório: `emanuelmoraes/flowdesk`
+- Branch: `main`
+- Root directory: `/`
+
+### 3) Configurar secrets (App Hosting)
+
+Variáveis obrigatórias:
+
+- `NEXT_PUBLIC_FIREBASE_API_KEY`
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+- `NEXT_PUBLIC_FIREBASE_APP_ID`
+
+Obs.: o mapeamento dessas variáveis já está definido em `apphosting.yaml`.
+
+## Fluxo de deploy
+
+- Push/merge na `main` dispara deploy automático no App Hosting
+- O serviço executa build e publica nova revisão
+
+## Ambientes separados (dev/staging/prod)
+
+O repositório agora possui workflow dedicado para deploy por ambiente em `.github/workflows/deploy-apphosting.yml`.
+
+Mapeamento padrão:
+
+- `develop` -> environment `development`
+- `staging` -> environment `staging`
+- `main` -> environment `production`
+
+Cada environment do GitHub deve ter variáveis e segredo próprios (isolamento):
+
+- **Variables**
+	- `FIREBASE_PROJECT_ID`
+	- `APPHOSTING_BACKEND`
+- **Secrets**
+	- `FIREBASE_TOKEN`
+
+Recomendação: usar um projeto Firebase por ambiente (ex.: `flowdesk-dev`, `flowdesk-staging`, `flowdesk-prod`) e configurar os mesmos nomes de secrets do `apphosting.yaml` em cada projeto.
+
+## Comandos úteis (CLI)
+
+Criar backend:
 ```bash
-firebase init hosting
+firebase apphosting:backends:create flowdesk-backend --location=us-central1 --project=flowdesk-fa666
 ```
 
-Selecione:
-- Use existing project
-- Public directory: `out`
-- Configure as single-page app: `Yes`
-- Set up automatic builds with GitHub: `No` (já temos o workflow)
-
-### 4. Configurar Secrets no GitHub
-
-Vá para o repositório no GitHub: `Settings` → `Secrets and variables` → `Actions` → `New repository secret`
-
-Adicione os seguintes secrets:
-
-#### Secrets do Firebase (variáveis de ambiente):
-```
-NEXT_PUBLIC_FIREBASE_API_KEY=sua_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=seu_auth_domain
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=seu_project_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=seu_storage_bucket
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=seu_messaging_sender_id
-NEXT_PUBLIC_FIREBASE_APP_ID=seu_app_id
-```
-
-#### Secret do Firebase Service Account:
-
-1. No Firebase Console, vá em `Project Settings` → `Service Accounts`
-2. Clique em `Generate new private key`
-3. Copie todo o conteúdo do arquivo JSON baixado
-4. Crie um secret chamado `FIREBASE_SERVICE_ACCOUNT` com o conteúdo do JSON
-
-#### Secret do Firebase Project ID:
-```
-FIREBASE_PROJECT_ID=seu_project_id
-```
-
-### 5. Habilitar Firebase Hosting
-
-No Firebase Console:
-1. Vá em `Build` → `Hosting`
-2. Clique em `Get Started`
-3. Siga as instruções para habilitar o Hosting
-
-### 6. Ajustar Next.js para exportação estática
-
-O arquivo `next.config.ts` precisa ser configurado para exportação estática.
-
-## Como Funciona
-
-1. **Push no branch main** → Dispara o workflow automaticamente
-2. **Workflow executa**:
-   - Instala dependências
-   - Cria arquivo .env.local com secrets
-   - Faz build do Next.js
-   - Deploy no Firebase Hosting
-3. **Deploy completo** → Site disponível na URL do Firebase
-
-## Comandos Úteis
-
-### Deploy manual local:
+Atualizar conexão com repositório:
 ```bash
-npm run build
-firebase deploy --only hosting
+firebase apphosting:backends:update flowdesk-backend --repo=emanuelmoraes/flowdesk --branch=main --project=flowdesk-fa666
 ```
 
-### Testar localmente:
+Criar rollout manual:
 ```bash
-npm run build
-firebase serve
+firebase apphosting:rollouts:create flowdesk-backend --project=flowdesk-fa666
 ```
 
-### Ver logs do deployment:
-```bash
-firebase hosting:channel:list
-```
+## Troubleshooting rápido
 
-## Troubleshooting
+### Build falhou
 
-### Erro: "Firebase project not found"
-- Verifique se o `FIREBASE_PROJECT_ID` secret está correto
-- Certifique-se de que o projeto existe no Firebase Console
+- Validar variáveis de ambiente no App Hosting
+- Executar `npm run build` localmente
 
-### Erro: "Permission denied"
-- Verifique se o `FIREBASE_SERVICE_ACCOUNT` está correto
-- Certifique-se de que a service account tem permissões de deploy
+### Erro de autorização no GitHub
 
-### Erro no build do Next.js
-- Verifique se todas as variáveis de ambiente estão configuradas
-- Teste o build localmente: `npm run build`
+- Revogar e reconectar a integração GitHub no Firebase
 
-## URLs
+### Projeto não está no Blaze
 
-Após o deploy, seu site estará disponível em:
-- URL do Firebase: `https://seu-projeto-id.web.app`
-- URL customizada (se configurada): `https://seu-dominio.com`
+- Atualizar plano do projeto para Blaze no Firebase Console
 
-## Próximos Passos
+## Referências
 
-- [ ] Configurar domínio customizado no Firebase Hosting
-- [ ] Adicionar SSL certificate (automático pelo Firebase)
-- [ ] Configurar preview channels para PRs
-- [ ] Adicionar testes automatizados no CI/CD
+- Guia detalhado: `doc/APP_HOSTING_GUIDE.md`
+- Config de runtime/env: `apphosting.yaml`
+
+## Checklist de Readiness para Produção
+
+Use este checklist antes de cada lançamento relevante.
+
+### Segurança
+
+- [ ] Regras do Firestore publicadas e sem permissões abertas
+- [ ] Papéis (`user`, `manager`, `admin`) validados em cenário real
+- [ ] Campos temporais persistidos como `Timestamp` (`serverTimestamp`)
+- [ ] Secrets revisados no App Hosting (sem valores expostos em repositório)
+
+### Qualidade
+
+- [ ] `npm run build` executa sem erro localmente
+- [ ] Fluxos críticos validados: login, criar projeto, criar/editar/mover ticket
+- [ ] Erros de permissão tratados com mensagem amigável na interface
+
+### Dados e performance
+
+- [ ] Índices Firestore aplicados e sincronizados com `firestore.indexes.json`
+- [ ] Reordenação de tickets validada com atualização em lote atômica
+- [ ] Queries principais com ordenação no servidor (sem varredura desnecessária)
+
+### Deploy e operação
+
+- [ ] Backends de App Hosting conectados às branches corretas (`develop`, `staging`, `main`)
+- [ ] Deploy automático testado após merge
+- [ ] Rollout manual de contingência validado (CLI)
+- [ ] Observabilidade mínima ativa (logs e monitoramento de falhas)
+
+### Go/No-Go
+
+- [ ] Critérios acima aprovados pelo responsável técnico
+- [ ] Release aprovada para produção

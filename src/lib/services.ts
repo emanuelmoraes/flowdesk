@@ -5,6 +5,7 @@ import {
   updateDoc, 
   deleteDoc, 
   doc,
+  getDoc,
   serverTimestamp,
   query,
   where,
@@ -14,8 +15,101 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { recordAuditTrail } from '@/lib/audit';
 import { logger } from '@/lib/logger';
-import { Project, Ticket, TicketStatus, TicketPriority, TicketType } from '@/types';
+import { canAddMember, canCreateProject, canCreateTicket, getPlan } from '@/lib/plans';
+import { getPersonalWorkspaceId } from '@/lib/workspace';
+import { Project, ProjectInvite, Ticket, TicketStatus, TicketPriority, TicketType } from '@/types';
+
+type TimestampLike = {
+  toDate: () => Date;
+};
+
+type BasicUserData = {
+  email: string;
+  displayName?: string;
+};
+
+type BasicProjectData = {
+  ownerId?: string;
+  members: string[];
+};
+
+type BasicInviteData = {
+  projectId: string;
+  email: string;
+  invitedBy: string;
+  status: ProjectInvite['status'];
+  respondedBy?: string;
+  createdAt?: TimestampLike;
+  updatedAt?: TimestampLike;
+  respondedAt?: TimestampLike;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null;
+};
+
+const hasToDate = (value: unknown): value is TimestampLike => {
+  return isRecord(value) && typeof value.toDate === 'function';
+};
+
+const parseBasicUserData = (value: unknown): BasicUserData | null => {
+  if (!isRecord(value) || typeof value.email !== 'string') {
+    return null;
+  }
+
+  return {
+    email: value.email,
+    displayName: typeof value.displayName === 'string' ? value.displayName : undefined,
+  };
+};
+
+const parseBasicProjectData = (value: unknown): BasicProjectData | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const members = Array.isArray(value.members)
+    ? value.members.filter((member): member is string => typeof member === 'string')
+    : [];
+
+  return {
+    ownerId: typeof value.ownerId === 'string' ? value.ownerId : undefined,
+    members,
+  };
+};
+
+const parseBasicInviteData = (value: unknown): BasicInviteData | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const projectId = value.projectId;
+  const email = value.email;
+  const invitedBy = value.invitedBy;
+  const status = value.status;
+
+  if (
+    typeof projectId !== 'string' ||
+    typeof email !== 'string' ||
+    typeof invitedBy !== 'string' ||
+    (status !== 'pending' && status !== 'accepted' && status !== 'declined' && status !== 'canceled')
+  ) {
+    return null;
+  }
+
+  return {
+    projectId,
+    email,
+    invitedBy,
+    status,
+    respondedBy: typeof value.respondedBy === 'string' ? value.respondedBy : undefined,
+    createdAt: hasToDate(value.createdAt) ? value.createdAt : undefined,
+    updatedAt: hasToDate(value.updatedAt) ? value.updatedAt : undefined,
+    respondedAt: hasToDate(value.respondedAt) ? value.respondedAt : undefined,
+  };
+};
 
 const PROJECT_NAME_MIN_LENGTH = 3;
 const PROJECT_NAME_MAX_LENGTH = 120;
@@ -36,6 +130,34 @@ const ticketTypeList: TicketType[] = ['bug', 'melhoria', 'tarefa', 'estoria', 'e
 const normalizeWhitespace = (value: string): string => value.trim().replace(/\s+/g, ' ');
 
 const normalizeDescription = (value: string): string => value.trim();
+
+const getUserPlanId = async (userId: string): Promise<string | undefined> => {
+  const userRef = doc(db, 'users', userId);
+  const userSnapshot = await getDoc(userRef);
+
+  if (!userSnapshot.exists()) {
+    return undefined;
+  }
+
+  const userData = userSnapshot.data();
+  if (!isRecord(userData)) {
+    return undefined;
+  }
+
+  return typeof userData.plan === 'string' ? userData.plan : undefined;
+};
+
+const getOwnedProjectsCount = async (ownerId: string): Promise<number> => {
+  const ownedProjectsQuery = query(collection(db, 'projects'), where('ownerId', '==', ownerId));
+  const ownedProjectsSnapshot = await getDocs(ownedProjectsQuery);
+  return ownedProjectsSnapshot.docs.length;
+};
+
+const getProjectTicketsCount = async (projectId: string): Promise<number> => {
+  const ticketsQuery = query(collection(db, 'tickets'), where('projectId', '==', projectId));
+  const ticketsSnapshot = await getDocs(ticketsQuery);
+  return ticketsSnapshot.docs.length;
+};
 
 export const generateSlug = (value: string): string => {
   return value
@@ -163,6 +285,15 @@ export const createProject = async (
       throw new Error(descriptionValidation.error || 'Descrição inválida');
     }
 
+    const ownerPlanId = await getUserPlanId(ownerId);
+    const ownerProjectsCount = await getOwnedProjectsCount(ownerId);
+    if (!canCreateProject(ownerPlanId, ownerProjectsCount)) {
+      const plan = getPlan(ownerPlanId);
+      throw new Error(`Limite do plano ${plan.name} atingido para criação de projetos`);
+    }
+
+    const workspaceId = getPersonalWorkspaceId(ownerId);
+
     // Verifica se o slug já existe
     const q = query(collection(db, 'projects'), where('slug', '==', normalizedSlug));
     const querySnapshot = await getDocs(q);
@@ -172,6 +303,7 @@ export const createProject = async (
     }
 
     const docRef = await addDoc(collection(db, 'projects'), {
+      workspaceId,
       name: normalizedName,
       slug: normalizedSlug,
       description: normalizedDescription,
@@ -179,6 +311,19 @@ export const createProject = async (
       members: [ownerId],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+    });
+
+    await recordAuditTrail({
+      actorId: ownerId,
+      action: 'project.created',
+      resourceType: 'project',
+      resourceId: docRef.id,
+      projectId: docRef.id,
+      metadata: {
+        workspaceId,
+        slug: normalizedSlug,
+      },
+      page: 'services',
     });
     
     return docRef.id;
@@ -259,6 +404,25 @@ export const createTicket = async (
       throw new Error(enumsValidation.error || 'Dados do ticket inválidos');
     }
 
+    const projectRef = doc(db, 'projects', projectId);
+    const projectSnapshot = await getDoc(projectRef);
+    if (!projectSnapshot.exists()) {
+      throw new Error('Projeto não encontrado');
+    }
+
+    const projectData = parseBasicProjectData(projectSnapshot.data());
+    const ownerId = projectData?.ownerId;
+    if (!ownerId) {
+      throw new Error('Projeto inválido para criação de ticket');
+    }
+
+    const ownerPlanId = await getUserPlanId(ownerId);
+    const currentTicketsCount = await getProjectTicketsCount(projectId);
+    if (!canCreateTicket(ownerPlanId, currentTicketsCount)) {
+      const plan = getPlan(ownerPlanId);
+      throw new Error(`Limite do plano ${plan.name} atingido para criação de tickets neste projeto`);
+    }
+
     // Busca o maior order atual (consulta otimizada)
     const q = query(
       collection(db, 'tickets'),
@@ -270,7 +434,14 @@ export const createTicket = async (
     const querySnapshot = await getDocs(q);
     const maxOrder = querySnapshot.empty
       ? 0
-      : Number(querySnapshot.docs[0].data().order || 0);
+      : (() => {
+          const firstDocData = querySnapshot.docs[0].data();
+          if (!isRecord(firstDocData) || typeof firstDocData.order !== 'number') {
+            return 0;
+          }
+
+          return firstDocData.order;
+        })();
 
     const docRef = await addDoc(collection(db, 'tickets'), {
       projectId,
@@ -338,13 +509,15 @@ export const updateTicket = async (
       }
     }
     
+    const filteredUpdates: Record<string, unknown> = {};
+    Object.entries(normalizedUpdates).forEach(([key, value]) => {
+      if (value !== undefined) {
+        filteredUpdates[key] = value;
+      }
+    });
+
     await updateDoc(ticketRef, {
-      ...Object.entries(normalizedUpdates).reduce((acc, [key, value]) => {
-        if (value !== undefined) {
-          acc[key] = value;
-        }
-        return acc;
-      }, {} as Record<string, any>),
+      ...filteredUpdates,
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
@@ -387,7 +560,7 @@ export const reorderTickets = async (
     
     updates.forEach(({ id, order, status }) => {
       const ticketRef = doc(db, 'tickets', id);
-      const updateData: Record<string, any> = {
+      const updateData: Record<string, unknown> = {
         order,
         updatedAt: serverTimestamp(),
       };
@@ -419,13 +592,16 @@ export const calculateProjectProgress = (tickets: Ticket[]): {
 };
 
 export const getTicketsByProject = (tickets: Ticket[]): Record<string, Ticket[]> => {
-  return tickets.reduce((acc, ticket) => {
-    if (!acc[ticket.projectId]) {
-      acc[ticket.projectId] = [];
+  const groupedTickets: Record<string, Ticket[]> = {};
+
+  tickets.forEach((ticket) => {
+    if (!groupedTickets[ticket.projectId]) {
+      groupedTickets[ticket.projectId] = [];
     }
-    acc[ticket.projectId].push(ticket);
-    return acc;
-  }, {} as Record<string, Ticket[]>);
+    groupedTickets[ticket.projectId].push(ticket);
+  });
+
+  return groupedTickets;
 };
 
 export const validateSlug = (slug: string): { valid: boolean; error?: string } => {
@@ -475,7 +651,10 @@ export const getUserByEmail = async (email: string): Promise<{
     }
     
     const userDoc = querySnapshot.docs[0];
-    const data = userDoc.data();
+    const data = parseBasicUserData(userDoc.data());
+    if (!data) {
+      return null;
+    }
     
     return {
       id: userDoc.id,
@@ -505,7 +684,11 @@ export const getUsersByIds = async (userIds: string[]): Promise<Array<{
       const userDoc = await getDocs(query(collection(db, 'users'), where('__name__', '==', userId)));
       if (!userDoc.empty) {
         const doc = userDoc.docs[0];
-        const data = doc.data();
+        const data = parseBasicUserData(doc.data());
+        if (!data) {
+          continue;
+        }
+
         users.push({
           id: doc.id,
           email: data.email,
@@ -531,22 +714,46 @@ export const getUsersByIds = async (userIds: string[]): Promise<Array<{
 export const addProjectMember = async (projectId: string, userId: string): Promise<void> => {
   try {
     const projectRef = doc(db, 'projects', projectId);
-    const projectDoc = await getDocs(query(collection(db, 'projects'), where('__name__', '==', projectId)));
-    
-    if (projectDoc.empty) {
+    const projectDoc = await getDoc(projectRef);
+
+    if (!projectDoc.exists()) {
       throw new Error('Projeto não encontrado');
     }
-    
-    const project = projectDoc.docs[0].data();
-    const members = project.members || [];
+
+    const project = parseBasicProjectData(projectDoc.data());
+    const members = project?.members || [];
+    const ownerId = project?.ownerId;
+
+    if (!ownerId) {
+      throw new Error('Projeto inválido para gestão de membros');
+    }
     
     if (members.includes(userId)) {
       throw new Error('Usuário já é membro deste projeto');
+    }
+
+    const ownerPlanId = await getUserPlanId(ownerId);
+    if (!canAddMember(ownerPlanId, members.length)) {
+      const plan = getPlan(ownerPlanId);
+      throw new Error(`Limite do plano ${plan.name} atingido para membros neste projeto`);
     }
     
     await updateDoc(projectRef, {
       members: [...members, userId],
       updatedAt: serverTimestamp(),
+    });
+
+    await recordAuditTrail({
+      actorId: ownerId,
+      action: 'member.added',
+      resourceType: 'member',
+      resourceId: userId,
+      projectId,
+      targetUserId: userId,
+      metadata: {
+        membersCount: members.length + 1,
+      },
+      page: 'services',
     });
   } catch (error) {
     throw error;
@@ -573,14 +780,187 @@ export const removeProjectMember = async (
       throw new Error('Projeto não encontrado');
     }
     
-    const project = projectDoc.docs[0].data();
-    const members = (project.members || []).filter((id: string) => id !== userId);
+    const project = parseBasicProjectData(projectDoc.docs[0].data());
+    const members = (project?.members || []).filter((id) => id !== userId);
     
     await updateDoc(projectRef, {
       members,
       updatedAt: serverTimestamp(),
     });
+
+    await recordAuditTrail({
+      actorId: ownerId,
+      action: 'member.removed',
+      resourceType: 'member',
+      resourceId: userId,
+      projectId,
+      targetUserId: userId,
+      metadata: {
+        membersCount: members.length,
+      },
+      page: 'services',
+    });
   } catch (error) {
     throw error;
   }
+};
+
+export const createProjectInvitation = async (
+  projectId: string,
+  email: string,
+  invitedBy: string
+): Promise<string> => {
+  const normalizedEmail = email.toLowerCase().trim();
+
+  if (!normalizedEmail) {
+    throw new Error('Email do convite é obrigatório');
+  }
+
+  const projectRef = doc(db, 'projects', projectId);
+  const projectSnapshot = await getDoc(projectRef);
+
+  if (!projectSnapshot.exists()) {
+    throw new Error('Projeto não encontrado');
+  }
+
+  const projectData = parseBasicProjectData(projectSnapshot.data());
+  const ownerId = projectData?.ownerId;
+  const members: string[] = projectData?.members || [];
+
+  if (ownerId !== invitedBy) {
+    throw new Error('Apenas o dono do projeto pode convidar membros');
+  }
+
+  const usersByEmailSnapshot = await getDocs(
+    query(collection(db, 'users'), where('email', '==', normalizedEmail))
+  );
+
+  if (!usersByEmailSnapshot.empty) {
+    const invitedUserId = usersByEmailSnapshot.docs[0].id;
+    if (members.includes(invitedUserId)) {
+      throw new Error('Este usuário já é membro deste projeto');
+    }
+  }
+
+  const invitesSnapshot = await getDocs(
+    query(collection(db, 'projectInvites'), where('projectId', '==', projectId))
+  );
+
+  const alreadyPending = invitesSnapshot.docs.some((inviteDoc) => {
+    const inviteData = parseBasicInviteData(inviteDoc.data());
+    if (!inviteData) {
+      return false;
+    }
+
+    return inviteData.email === normalizedEmail && inviteData.status === 'pending';
+  });
+
+  if (alreadyPending) {
+    throw new Error('Já existe um convite pendente para este email');
+  }
+
+  const inviteRef = await addDoc(collection(db, 'projectInvites'), {
+    projectId,
+    email: normalizedEmail,
+    invitedBy,
+    status: 'pending',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+
+  await recordAuditTrail({
+    actorId: invitedBy,
+    action: 'invite.created',
+    resourceType: 'invite',
+    resourceId: inviteRef.id,
+    projectId,
+    metadata: {
+      email: normalizedEmail,
+    },
+    page: 'services',
+  });
+
+  return inviteRef.id;
+};
+
+export const listProjectInvitations = async (projectId: string): Promise<ProjectInvite[]> => {
+  const invitesSnapshot = await getDocs(
+    query(collection(db, 'projectInvites'), where('projectId', '==', projectId))
+  );
+
+  return invitesSnapshot.docs
+    .map((inviteDoc) => {
+      const inviteData = parseBasicInviteData(inviteDoc.data());
+      if (!inviteData) {
+        return null;
+      }
+
+      const parsedInvite: ProjectInvite = {
+        id: inviteDoc.id,
+        projectId: inviteData.projectId,
+        email: inviteData.email,
+        invitedBy: inviteData.invitedBy,
+        status: inviteData.status,
+        respondedBy: inviteData.respondedBy,
+        createdAt: inviteData.createdAt?.toDate() || new Date(),
+        updatedAt: inviteData.updatedAt?.toDate() || new Date(),
+        respondedAt: inviteData.respondedAt?.toDate(),
+      };
+
+      return parsedInvite;
+    })
+    .filter((invite): invite is ProjectInvite => invite !== null)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+};
+
+export const cancelProjectInvitation = async (
+  inviteId: string,
+  actorId: string
+): Promise<void> => {
+  const inviteRef = doc(db, 'projectInvites', inviteId);
+  const inviteSnapshot = await getDoc(inviteRef);
+
+  if (!inviteSnapshot.exists()) {
+    throw new Error('Convite não encontrado');
+  }
+
+  const inviteData = parseBasicInviteData(inviteSnapshot.data());
+  if (!inviteData) {
+    throw new Error('Convite inválido');
+  }
+
+  if (inviteData.status !== 'pending') {
+    throw new Error('Somente convites pendentes podem ser cancelados');
+  }
+
+  const projectRef = doc(db, 'projects', inviteData.projectId);
+  const projectSnapshot = await getDoc(projectRef);
+
+  if (!projectSnapshot.exists()) {
+    throw new Error('Projeto não encontrado');
+  }
+
+  const projectData = parseBasicProjectData(projectSnapshot.data());
+  if (projectData?.ownerId !== actorId) {
+    throw new Error('Apenas o dono do projeto pode cancelar convites');
+  }
+
+  await updateDoc(inviteRef, {
+    status: 'canceled',
+    respondedBy: actorId,
+    respondedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+
+  await recordAuditTrail({
+    actorId,
+    action: 'invite.canceled',
+    resourceType: 'invite',
+    resourceId: inviteId,
+    projectId: inviteData.projectId,
+    metadata: {
+      email: inviteData.email,
+    },
+    page: 'services',
+  });
 };

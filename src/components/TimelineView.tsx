@@ -41,6 +41,8 @@ const priorityDots: Record<string, string> = {
 
 type GroupBy = 'day' | 'week' | 'month';
 
+const groupByOptions: readonly GroupBy[] = ['day', 'week', 'month'];
+
 export default function TimelineView({ tickets, onTicketClick }: TimelineViewProps) {
   const [groupBy, setGroupBy] = useState<GroupBy>('day');
   const [showCompleted, setShowCompleted] = useState(true);
@@ -116,7 +118,7 @@ export default function TimelineView({ tickets, onTicketClick }: TimelineViewPro
           <FaFilter className="w-4 h-4 text-gray-400" />
           <span className="text-sm text-gray-600">Agrupar por:</span>
           <div className="flex bg-gray-100 rounded-lg p-0.5">
-            {(['day', 'week', 'month'] as GroupBy[]).map((option) => (
+            {groupByOptions.map((option) => (
               <button
                 key={option}
                 onClick={() => setGroupBy(option)}
@@ -146,8 +148,9 @@ export default function TimelineView({ tickets, onTicketClick }: TimelineViewPro
       {/* Timeline */}
       <div className="p-4 max-h-[600px] overflow-y-auto">
         {groupedTickets.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            Nenhum ticket encontrado.
+          <div className="text-center py-8 text-gray-500 space-y-1">
+            <p>Nenhum ticket encontrado para os filtros atuais.</p>
+            <p className="text-sm text-gray-400">Ajuste os filtros ou crie um novo ticket para preencher a timeline.</p>
           </div>
         ) : (
           <div className="relative">

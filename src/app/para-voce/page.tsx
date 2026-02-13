@@ -2,6 +2,7 @@
 
 import ProtectedRoute from '@/components/ProtectedRoute';
 import AppLayout from '@/components/AppLayout';
+import Link from 'next/link';
 import { FaHouse, FaClock, FaTicket } from 'react-icons/fa6';
 
 export default function ParaVocePage() {
@@ -26,6 +27,20 @@ function ParaVoceContent() {
             <p className="text-gray-600 mb-6">
               Esta página está em desenvolvimento. Aqui você verá seus projetos recentes e últimos tickets.
             </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                href="/criar-projeto"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Criar meu primeiro projeto
+              </Link>
+              <Link
+                href="/projetos"
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium text-gray-700"
+              >
+                Ver meus projetos
+              </Link>
+            </div>
             
             {/* Preview do que virá */}
             <div className="grid md:grid-cols-2 gap-6 mt-8 text-left">

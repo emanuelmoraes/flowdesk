@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { collection, query, getDocs, where, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { projectConverter, ticketConverter } from '@/lib/firestoreConverters';
 import { Project, Ticket } from '@/types';
 import { ProjectCardSkeleton } from '@/components/ui/Skeletons';
 import { calculateProjectProgress, getTicketsByProject } from '@/lib/services';
@@ -47,18 +48,13 @@ function ProjetosContent() {
       
       // Buscar projetos onde o usuário é membro
       const projectsQuery = query(
-        collection(db, 'projects'),
+        collection(db, 'projects').withConverter(projectConverter),
         where('members', 'array-contains', user.uid),
         orderBy('updatedAt', 'desc')
       );
       const projectsSnapshot = await getDocs(projectsQuery);
       
-      const projectsData = projectsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
-        updatedAt: doc.data().updatedAt?.toDate(),
-      })) as Project[];
+      const projectsData = projectsSnapshot.docs.map((projectDoc) => projectDoc.data());
       
       if (projectsData.length === 0) {
         setProjects([]);
@@ -69,15 +65,12 @@ function ProjetosContent() {
       // Buscar TODOS os tickets de uma vez
       const projectIds = projectsData.map(p => p.id);
       const ticketsQuery = query(
-        collection(db, 'tickets'),
+        collection(db, 'tickets').withConverter(ticketConverter),
         where('projectId', 'in', projectIds.slice(0, 10)) // Firestore limita 'in' a 10 itens
       );
       const ticketsSnapshot = await getDocs(ticketsQuery);
       
-      const allTickets = ticketsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Ticket[];
+      const allTickets = ticketsSnapshot.docs.map((ticketDoc) => ticketDoc.data());
       
       // Agrupar tickets por projeto (no cliente) usando função utilitária
       const ticketsByProject = getTicketsByProject(allTickets);
@@ -86,11 +79,13 @@ function ProjetosContent() {
       const projectsWithProgress = projectsData.map(project => {
         const tickets = ticketsByProject[project.id] || [];
         const progressData = calculateProjectProgress(tickets);
-        
-        return {
+
+        const projectWithProgress: ProjectWithProgress = {
           ...project,
           ...progressData,
-        } as ProjectWithProgress;
+        };
+
+        return projectWithProgress;
       });
       
       setProjects(projectsWithProgress);
@@ -132,12 +127,20 @@ function ProjetosContent() {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Nenhum projeto encontrado</h2>
             <p className="text-gray-600 mb-6">Comece criando seu primeiro projeto!</p>
-            <button
-              onClick={() => router.push('/criar-projeto')}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
-            >
-              Criar Primeiro Projeto
-            </button>
+            <div className="flex flex-col items-center gap-3">
+              <button
+                onClick={() => router.push('/criar-projeto?onboarding=1')}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+              >
+                Iniciar Onboarding Guiado
+              </button>
+              <button
+                onClick={() => router.push('/criar-projeto')}
+                className="text-sm text-gray-600 hover:text-gray-900 hover:underline"
+              >
+                Criar projeto sem onboarding
+              </button>
+            </div>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

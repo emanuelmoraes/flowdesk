@@ -15,6 +15,22 @@ export interface LogEntry {
   page?: string;
 }
 
+type TimestampLike = {
+  toDate: () => Date;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null;
+};
+
+const hasToDate = (value: unknown): value is TimestampLike => {
+  return isRecord(value) && typeof value.toDate === 'function';
+};
+
+const isLogLevel = (value: unknown): value is LogLevel => {
+  return value === 'info' || value === 'warn' || value === 'error' || value === 'success';
+};
+
 interface CreateLogParams {
   level: LogLevel;
   message: string;
@@ -107,16 +123,24 @@ export async function getLogs(filters: LogFilters = {}): Promise<LogEntry[]> {
 
     snapshot.forEach((doc) => {
       const data = doc.data();
+      const safeData = isRecord(data) ? data : {};
+      const level = isLogLevel(safeData.level) ? safeData.level : 'info';
+      const message = typeof safeData.message === 'string' ? safeData.message : '';
+      const userId = typeof safeData.userId === 'string' ? safeData.userId : undefined;
+      const action = typeof safeData.action === 'string' ? safeData.action : undefined;
+      const page = typeof safeData.page === 'string' ? safeData.page : undefined;
+      const metadata = isRecord(safeData.metadata) ? safeData.metadata : undefined;
+
       logs.push({
         id: doc.id,
-        timestamp: data.timestamp?.toDate() || new Date(),
-        retentionUntil: data.retentionUntil?.toDate(),
-        level: data.level,
-        message: data.message,
-        userId: data.userId,
-        action: data.action,
-        metadata: data.metadata,
-        page: data.page,
+        timestamp: hasToDate(safeData.timestamp) ? safeData.timestamp.toDate() : new Date(),
+        retentionUntil: hasToDate(safeData.retentionUntil) ? safeData.retentionUntil.toDate() : undefined,
+        level,
+        message,
+        userId,
+        action,
+        metadata,
+        page,
       });
     });
 

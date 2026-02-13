@@ -73,8 +73,10 @@ export default function TicketListView({ tickets, onEditTicket }: TicketListView
   if (tickets.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-        <p className="text-gray-500">Nenhum ticket encontrado.</p>
-        <p className="text-gray-400 text-sm mt-2">Clique em "+ Novo Ticket" para criar o primeiro.</p>
+        <p className="text-gray-500">Ainda não há tickets neste projeto.</p>
+        <p className="text-gray-400 text-sm mt-2">
+          Clique em "+ Novo Ticket" para registrar a primeira tarefa e começar o fluxo do time.
+        </p>
       </div>
     );
   }

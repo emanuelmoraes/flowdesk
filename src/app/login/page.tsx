@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { getUserFacingErrorMessage } from '@/lib/errorHandling';
 
 type AuthMode = 'login' | 'register';
 
@@ -16,7 +19,11 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [sendingReset, setSendingReset] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [localSuccess, setLocalSuccess] = useState<string | null>(null);
 
   const resetForm = () => {
     setEmail('');
@@ -24,6 +31,8 @@ export default function LoginPage() {
     setConfirmPassword('');
     setDisplayName('');
     setLocalError(null);
+    setLocalSuccess(null);
+    setShowForgotPassword(false);
   };
 
   const handleModeChange = (newMode: AuthMode) => {
@@ -34,6 +43,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError(null);
+    setLocalSuccess(null);
     
     if (mode === 'register') {
       if (password !== confirmPassword) {
@@ -58,6 +68,30 @@ export default function LoginPage() {
       if (success) {
         router.push('/projetos');
       }
+    }
+  };
+
+  const handlePasswordReset = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault();
+    setLocalError(null);
+    setLocalSuccess(null);
+
+    const targetEmail = resetEmail.trim() || email.trim();
+    if (!targetEmail) {
+      setLocalError('Informe seu email para recuperar a senha.');
+      return;
+    }
+
+    setSendingReset(true);
+    try {
+      await sendPasswordResetEmail(auth, targetEmail);
+      setLocalSuccess('Enviamos um link de recuperação para seu email. Verifique sua caixa de entrada.');
+      setShowForgotPassword(false);
+      setResetEmail('');
+    } catch (error: unknown) {
+      setLocalError(getUserFacingErrorMessage(error, 'Não foi possível enviar o email de recuperação.'));
+    } finally {
+      setSendingReset(false);
     }
   };
 
@@ -215,10 +249,56 @@ export default function LoginPage() {
               </div>
             )}
 
+            {mode === 'login' && (
+              <div className="-mt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotPassword((prev) => !prev);
+                    setLocalError(null);
+                    setLocalSuccess(null);
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  {showForgotPassword ? 'Fechar recuperação de senha' : 'Esqueci minha senha'}
+                </button>
+              </div>
+            )}
+
+            {mode === 'login' && showForgotPassword && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                <p className="text-sm text-blue-800">
+                  Informe seu email para receber um link seguro de redefinição de senha.
+                </p>
+                <form onSubmit={handlePasswordReset} className="space-y-3">
+                  <input
+                    type="email"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    className="appearance-none block w-full px-3 py-2 border border-blue-200 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={sendingReset}
+                    className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {sendingReset ? 'Enviando link...' : 'Enviar link de recuperação'}
+                  </button>
+                </form>
+              </div>
+            )}
+
             {/* Erro */}
             {displayError && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                 {displayError}
+              </div>
+            )}
+
+            {localSuccess && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+                {localSuccess}
               </div>
             )}
 

@@ -4,15 +4,19 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { doc, getDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Project } from '@/types';
+import { projectConverter } from '@/lib/firestoreConverters';
+import { Project, ProjectInvite } from '@/types';
 import RichTextEditor from '@/components/RichTextEditor';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import AppLayout from '@/components/AppLayout';
 import { useNotification } from '@/hooks/useNotification';
 import { useAuth } from '@/hooks/useAuth';
+import { getUserFacingErrorMessage } from '@/lib/errorHandling';
+import { recordAuditTrail } from '@/lib/audit';
 import { logger } from '@/lib/logger';
-import { getUserByEmail, getUsersByIds, addProjectMember, removeProjectMember } from '@/lib/services';
-import { FaUserPlus, FaTrash, FaCrown } from 'react-icons/fa6';
+import { getSingleRouteParam } from '@/lib/typeGuards';
+import { getUsersByIds, removeProjectMember, createProjectInvitation, listProjectInvitations, cancelProjectInvitation } from '@/lib/services';
+import { FaUserPlus, FaTrash, FaCrown, FaEnvelope } from 'react-icons/fa6';
 
 export default function EditarProjetoPage() {
   return (
@@ -25,9 +29,19 @@ export default function EditarProjetoPage() {
 function EditarProjetoContent() {
   const router = useRouter();
   const params = useParams();
-  const projectId = params.projectId as string;
+  const projectId = getSingleRouteParam(params.projectId);
   const { user } = useAuth();
   const { showSuccess, showError } = useNotification();
+
+  if (!projectId) {
+    return (
+      <AppLayout title="Erro">
+        <div className="flex items-center justify-center py-20">
+          <p className="text-gray-600">Identificador de projeto inválido.</p>
+        </div>
+      </AppLayout>
+    );
+  }
 
   const [project, setProject] = useState<Project | null>(null);
   const [name, setName] = useState('');
@@ -42,6 +56,8 @@ function EditarProjetoContent() {
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [addingMember, setAddingMember] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [projectInvites, setProjectInvites] = useState<ProjectInvite[]>([]);
+  const [cancelingInviteId, setCancelingInviteId] = useState<string | null>(null);
   const isOwner = !!user && !!project && project.ownerId === user.uid;
 
   useEffect(() => {
@@ -53,8 +69,23 @@ function EditarProjetoContent() {
   useEffect(() => {
     if (project?.members) {
       fetchMembers(project.members);
+      fetchProjectInvites(project.id);
     }
   }, [project?.members]);
+
+  const fetchProjectInvites = async (targetProjectId: string) => {
+    try {
+      const invites = await listProjectInvitations(targetProjectId);
+      setProjectInvites(invites.filter((invite) => invite.status === 'pending'));
+    } catch (err) {
+      logger.error('Erro ao carregar convites pendentes', {
+        action: 'load_project_invites',
+        metadata: { projectId: targetProjectId, error: String(err) },
+        page: 'editar_projeto',
+      });
+      setProjectInvites([]);
+    }
+  };
 
   const fetchMembers = async (memberIds: string[]) => {
     try {
@@ -74,15 +105,10 @@ function EditarProjetoContent() {
   const fetchProject = async () => {
     try {
       setLoading(true);
-      const projectDoc = await getDoc(doc(db, 'projects', projectId));
+      const projectDoc = await getDoc(doc(db, 'projects', projectId).withConverter(projectConverter));
       
       if (projectDoc.exists()) {
-        const projectData = {
-          id: projectDoc.id,
-          ...projectDoc.data(),
-          createdAt: projectDoc.data().createdAt?.toDate(),
-          updatedAt: projectDoc.data().updatedAt?.toDate(),
-        } as Project;
+        const projectData = projectDoc.data();
         
         setProject(projectData);
         setName(projectData.name);
@@ -126,6 +152,18 @@ function EditarProjetoContent() {
         updatedAt: serverTimestamp(),
       });
 
+      await recordAuditTrail({
+        actorId: user.uid,
+        action: 'project.updated',
+        resourceType: 'project',
+        resourceId: projectId,
+        projectId,
+        metadata: {
+          name: name.trim(),
+        },
+        page: 'editar_projeto',
+      });
+
       router.push('/projetos');
     } catch (err) {
       logger.error('Erro ao atualizar projeto', {
@@ -147,6 +185,16 @@ function EditarProjetoContent() {
     try {
       // TODO: Deletar todos os tickets do projeto antes
       await deleteDoc(doc(db, 'projects', projectId));
+
+      await recordAuditTrail({
+        actorId: user.uid,
+        action: 'project.deleted',
+        resourceType: 'project',
+        resourceId: projectId,
+        projectId,
+        page: 'editar_projeto',
+      });
+
       logger.success('Projeto deletado', {
         action: 'delete_project',
         metadata: { projectId },
@@ -174,36 +222,55 @@ function EditarProjetoContent() {
     
     setAddingMember(true);
     try {
-      // Busca o usuário pelo email
-      const foundUser = await getUserByEmail(newMemberEmail);
-      
-      if (!foundUser) {
-        showError('Usuário não encontrado. Verifique o email.');
-        return;
-      }
-      
-      if (foundUser.id === user?.uid) {
-        showError('Você já é membro deste projeto.');
-        return;
-      }
-      
-      // Adiciona o membro
-      await addProjectMember(projectId, foundUser.id);
-      
-      // Atualiza a lista local de membros
-      setMembers(prev => [...prev, foundUser]);
-      setProject(prev => prev ? { 
-        ...prev, 
-        members: [...(prev.members || []), foundUser.id] 
-      } : null);
+      await createProjectInvitation(projectId, newMemberEmail, user.uid);
+      await fetchProjectInvites(projectId);
+
+      await recordAuditTrail({
+        actorId: user.uid,
+        action: 'invite.sent_from_project_settings',
+        resourceType: 'invite',
+        resourceId: projectId,
+        projectId,
+        metadata: {
+          email: newMemberEmail.toLowerCase().trim(),
+        },
+        page: 'editar_projeto',
+      });
       
       setNewMemberEmail('');
-      showSuccess(`${foundUser.displayName} foi adicionado ao projeto!`);
+      showSuccess('Convite enviado com sucesso.');
     } catch (err) {
-      const error = err as Error;
-      showError(error.message || 'Erro ao adicionar membro.');
+      showError(getUserFacingErrorMessage(err, 'Erro ao adicionar membro.'));
     } finally {
       setAddingMember(false);
+    }
+  };
+
+  const handleCancelInvite = async (inviteId: string) => {
+    if (!user || !project || project.ownerId !== user.uid) {
+      showError('Apenas o dono do projeto pode cancelar convites.');
+      return;
+    }
+
+    setCancelingInviteId(inviteId);
+    try {
+      await cancelProjectInvitation(inviteId, user.uid);
+      await fetchProjectInvites(projectId);
+
+      await recordAuditTrail({
+        actorId: user.uid,
+        action: 'invite.canceled_from_project_settings',
+        resourceType: 'invite',
+        resourceId: inviteId,
+        projectId,
+        page: 'editar_projeto',
+      });
+
+      showSuccess('Convite cancelado.');
+    } catch (err) {
+      showError(getUserFacingErrorMessage(err, 'Erro ao cancelar convite.'));
+    } finally {
+      setCancelingInviteId(null);
     }
   };
 
@@ -218,6 +285,19 @@ function EditarProjetoContent() {
     setRemovingMemberId(memberId);
     try {
       await removeProjectMember(projectId, memberId, project.ownerId);
+
+      await recordAuditTrail({
+        actorId: user.uid,
+        action: 'member.removed_from_project_settings',
+        resourceType: 'member',
+        resourceId: memberId,
+        projectId,
+        targetUserId: memberId,
+        metadata: {
+          memberName,
+        },
+        page: 'editar_projeto',
+      });
       
       // Atualiza a lista local de membros
       setMembers(prev => prev.filter(m => m.id !== memberId));
@@ -228,8 +308,7 @@ function EditarProjetoContent() {
       
       showSuccess(`${memberName} foi removido do projeto.`);
     } catch (err) {
-      const error = err as Error;
-      showError(error.message || 'Erro ao remover membro.');
+      showError(getUserFacingErrorMessage(err, 'Erro ao remover membro.'));
     } finally {
       setRemovingMemberId(null);
     }
@@ -361,7 +440,7 @@ function EditarProjetoContent() {
             <div className="bg-white rounded-xl shadow-md p-6 mt-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-1">Membros do Projeto</h2>
               <p className="text-gray-600 text-sm mb-4">
-                Adicione pessoas para colaborar neste projeto.
+                Convide pessoas por email para colaborar neste projeto.
               </p>
               
               {/* Formulário para adicionar membro */}
@@ -379,14 +458,43 @@ function EditarProjetoContent() {
                   className="px-4 py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   <FaUserPlus className="w-4 h-4" />
-                  {addingMember ? 'Adicionando...' : 'Adicionar'}
+                  {addingMember ? 'Enviando...' : 'Convidar'}
                 </button>
               </form>
+
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Convites pendentes</h3>
+                {projectInvites.length === 0 ? (
+                  <p className="text-xs text-gray-500">
+                    Nenhum convite pendente. Convide alguém para começar a colaborar neste projeto.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {projectInvites.map((invite) => (
+                      <div key={invite.id} className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                        <div className="flex items-center gap-2 text-sm text-gray-700">
+                          <FaEnvelope className="w-3.5 h-3.5 text-gray-500" />
+                          <span>{invite.email}</span>
+                        </div>
+                        <button
+                          onClick={() => handleCancelInvite(invite.id)}
+                          disabled={cancelingInviteId === invite.id || !isOwner}
+                          className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50"
+                        >
+                          {cancelingInviteId === invite.id ? 'Cancelando...' : 'Cancelar'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Lista de membros */}
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {members.length === 0 ? (
-                  <p className="text-gray-500 text-sm py-2">Nenhum membro encontrado.</p>
+                  <p className="text-gray-500 text-sm py-2">
+                    Você ainda não tem membros neste projeto. Envie um convite por email para montar seu time.
+                  </p>
                 ) : (
                   members.map((member) => (
                     <div

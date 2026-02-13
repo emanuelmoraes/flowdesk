@@ -9,19 +9,46 @@ import {
   getDocs, 
   doc, 
   getDoc,
-  deleteDoc,
-  serverTimestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { projectConverter, ticketConverter } from '@/lib/firestoreConverters';
 import { Ticket, Project, TicketStatus, TicketPriority, TicketType } from '@/types';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import AppLayout from '@/components/AppLayout';
 import { useNotification } from '@/hooks/useNotification';
 import { useAuth } from '@/hooks/useAuth';
+import { getUserFacingErrorMessage } from '@/lib/errorHandling';
 import { logger } from '@/lib/logger';
 import { createTicket, updateTicket, deleteTicket } from '@/lib/services';
-import { ticketTypeLabels, ticketTypeIcons } from '@/components/icons/TicketTypeIcons';
+import {
+  getSingleRouteParam,
+  isTicketPriority,
+  isTicketPriorityFilter,
+  isTicketStatus,
+  isTicketStatusFilter,
+  isTicketType,
+  isTicketTypeFilter,
+  ticketPriorityValues,
+  ticketStatusValues,
+  ticketTypeValues,
+} from '@/lib/typeGuards';
+import { ticketTypeLabels } from '@/components/icons/TicketTypeIcons';
 import { FaTicket } from 'react-icons/fa6';
+
+const STATUS_LABELS: Record<TicketStatus, string> = {
+  backlog: 'Backlog',
+  todo: 'A Fazer',
+  'in-progress': 'Em Progresso',
+  review: 'Em Revisão',
+  done: 'Concluído',
+};
+
+const PRIORITY_LABELS: Record<TicketPriority, string> = {
+  low: 'Baixa',
+  medium: 'Média',
+  high: 'Alta',
+  urgent: 'Urgente',
+};
 
 export default function GerenciarTicketsPage() {
   return (
@@ -34,9 +61,19 @@ export default function GerenciarTicketsPage() {
 function GerenciarTicketsContent() {
   const router = useRouter();
   const params = useParams();
-  const projectId = params.projectId as string;
+  const projectId = getSingleRouteParam(params.projectId);
   const { user } = useAuth();
   const { showError } = useNotification();
+
+  if (!projectId) {
+    return (
+      <AppLayout title="Erro">
+        <div className="flex items-center justify-center py-20">
+          <p className="text-gray-600">Identificador de projeto inválido.</p>
+        </div>
+      </AppLayout>
+    );
+  }
 
   const [project, setProject] = useState<Project | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -59,14 +96,9 @@ function GerenciarTicketsContent() {
       setLoading(true);
       
       // Buscar projeto
-      const projectDoc = await getDoc(doc(db, 'projects', projectId));
+      const projectDoc = await getDoc(doc(db, 'projects', projectId).withConverter(projectConverter));
       if (projectDoc.exists()) {
-        const projectData = {
-          id: projectDoc.id,
-          ...projectDoc.data(),
-          createdAt: projectDoc.data().createdAt?.toDate(),
-          updatedAt: projectDoc.data().updatedAt?.toDate(),
-        } as Project;
+        const projectData = projectDoc.data();
 
         setProject(projectData);
 
@@ -81,17 +113,12 @@ function GerenciarTicketsContent() {
 
       // Buscar tickets
       const q = query(
-        collection(db, 'tickets'),
+        collection(db, 'tickets').withConverter(ticketConverter),
         where('projectId', '==', projectId)
       );
       const querySnapshot = await getDocs(q);
       
-      const ticketsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
-        updatedAt: doc.data().updatedAt?.toDate(),
-      })) as Ticket[];
+      const ticketsData = querySnapshot.docs.map((ticketDoc) => ticketDoc.data());
       
       ticketsData.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       setTickets(ticketsData);
@@ -129,21 +156,6 @@ function GerenciarTicketsContent() {
         page: 'gerenciar_tickets',
       });
     }
-  };
-
-  const statusLabels: Record<TicketStatus, string> = {
-    'backlog': 'Backlog',
-    'todo': 'A Fazer',
-    'in-progress': 'Em Progresso',
-    'review': 'Em Revisão',
-    'done': 'Concluído',
-  };
-
-  const priorityLabels: Record<TicketPriority, string> = {
-    'low': 'Baixa',
-    'medium': 'Média',
-    'high': 'Alta',
-    'urgent': 'Urgente',
   };
 
   const statusColors: Record<TicketStatus, string> = {
@@ -245,15 +257,18 @@ function GerenciarTicketsContent() {
               <label className="text-sm font-medium text-gray-700 mr-2">Status:</label>
               <select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value as TicketStatus | 'all')}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  if (isTicketStatusFilter(nextValue)) {
+                    setFilterStatus(nextValue);
+                  }
+                }}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">Todos</option>
-                <option value="backlog">Backlog</option>
-                <option value="todo">A Fazer</option>
-                <option value="in-progress">Em Progresso</option>
-                <option value="review">Em Revisão</option>
-                <option value="done">Concluído</option>
+                {ticketStatusValues.map((statusOption) => (
+                  <option key={statusOption} value={statusOption}>{STATUS_LABELS[statusOption]}</option>
+                ))}
               </select>
             </div>
 
@@ -261,14 +276,18 @@ function GerenciarTicketsContent() {
               <label className="text-sm font-medium text-gray-700 mr-2">Prioridade:</label>
               <select
                 value={filterPriority}
-                onChange={(e) => setFilterPriority(e.target.value as TicketPriority | 'all')}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  if (isTicketPriorityFilter(nextValue)) {
+                    setFilterPriority(nextValue);
+                  }
+                }}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">Todas</option>
-                <option value="low">Baixa</option>
-                <option value="medium">Média</option>
-                <option value="high">Alta</option>
-                <option value="urgent">Urgente</option>
+                {ticketPriorityValues.map((priorityOption) => (
+                  <option key={priorityOption} value={priorityOption}>{PRIORITY_LABELS[priorityOption]}</option>
+                ))}
               </select>
             </div>
 
@@ -276,12 +295,17 @@ function GerenciarTicketsContent() {
               <label className="text-sm font-medium text-gray-700 mr-2">Tipo:</label>
               <select
                 value={filterType}
-                onChange={(e) => setFilterType(e.target.value as TicketType | 'all')}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  if (isTicketTypeFilter(nextValue)) {
+                    setFilterType(nextValue);
+                  }
+                }}
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">Todos</option>
-                {(Object.entries(ticketTypeLabels) as [TicketType, string][]).map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
+                {ticketTypeValues.map((typeOption) => (
+                  <option key={typeOption} value={typeOption}>{ticketTypeLabels[typeOption]}</option>
                 ))}
               </select>
             </div>
@@ -303,9 +327,17 @@ function GerenciarTicketsContent() {
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Nenhum ticket encontrado</h2>
             <p className="text-gray-600">
               {filterStatus !== 'all' || filterPriority !== 'all' || filterType !== 'all'
-                ? 'Tente ajustar os filtros' 
-                : 'Crie tickets pelo Kanban'}
+                ? 'Tente ajustar os filtros para localizar tickets existentes.'
+                : 'Crie seu primeiro ticket no Kanban para começar a acompanhar o trabalho.'}
             </p>
+            {(filterStatus === 'all' && filterPriority === 'all' && filterType === 'all') && (
+              <button
+                onClick={() => router.push(`/projetos/${projectId}`)}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Ir para o Kanban
+              </button>
+            )}
           </div>
         ) : (
           <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -353,12 +385,12 @@ function GerenciarTicketsContent() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[ticket.status]}`}>
-                        {statusLabels[ticket.status]}
+                        {STATUS_LABELS[ticket.status]}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs font-semibold rounded-full ${priorityColors[ticket.priority]}`}>
-                        {priorityLabels[ticket.priority]}
+                        {PRIORITY_LABELS[ticket.priority]}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -484,6 +516,7 @@ function EditTicketModal({
   onClose: () => void; 
   onSave: () => void; 
 }) {
+  const { showError } = useNotification();
   const [title, setTitle] = useState(ticket.title);
   const [description, setDescription] = useState(ticket.description || '');
   const [status, setStatus] = useState<TicketStatus>(ticket.status);
@@ -524,6 +557,7 @@ function EditTicketModal({
         metadata: { ticketId: ticket.id, error: String(error) },
         page: 'gerenciar_tickets',
       });
+      showError(getUserFacingErrorMessage(error, 'Erro ao atualizar ticket.'));
       setSaving(false);
     }
   };
@@ -566,11 +600,16 @@ function EditTicketModal({
               </label>
               <select
                 value={type}
-                onChange={(e) => setType(e.target.value as TicketType)}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  if (isTicketType(nextValue)) {
+                    setType(nextValue);
+                  }
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                {(Object.entries(ticketTypeLabels) as [TicketType, string][]).map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
+                {ticketTypeValues.map((typeOption) => (
+                  <option key={typeOption} value={typeOption}>{ticketTypeLabels[typeOption]}</option>
                 ))}
               </select>
             </div>
@@ -581,13 +620,17 @@ function EditTicketModal({
               </label>
               <select
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as TicketPriority)}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  if (isTicketPriority(nextValue)) {
+                    setPriority(nextValue);
+                  }
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="low">Baixa</option>
-                <option value="medium">Média</option>
-                <option value="high">Alta</option>
-                <option value="urgent">Urgente</option>
+                {ticketPriorityValues.map((priorityOption) => (
+                  <option key={priorityOption} value={priorityOption}>{PRIORITY_LABELS[priorityOption]}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -599,14 +642,17 @@ function EditTicketModal({
               </label>
               <select
                 value={status}
-                onChange={(e) => setStatus(e.target.value as TicketStatus)}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  if (isTicketStatus(nextValue)) {
+                    setStatus(nextValue);
+                  }
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="backlog">Backlog</option>
-                <option value="todo">A Fazer</option>
-                <option value="in-progress">Em Progresso</option>
-                <option value="review">Em Revisão</option>
-                <option value="done">Concluído</option>
+                {ticketStatusValues.map((statusOption) => (
+                  <option key={statusOption} value={statusOption}>{STATUS_LABELS[statusOption]}</option>
+                ))}
               </select>
             </div>
 
@@ -658,6 +704,7 @@ function CreateTicketModal({
   onClose: () => void; 
   onSave: () => void; 
 }) {
+  const { showError } = useNotification();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TicketStatus>('backlog');
@@ -674,7 +721,7 @@ function CreateTicketModal({
     }
     
     if (!title.trim()) {
-      alert('O título é obrigatório.');
+      showError('O título é obrigatório.');
       return;
     }
 
@@ -703,6 +750,7 @@ function CreateTicketModal({
         metadata: { projectId, error: String(error) },
         page: 'gerenciar_tickets',
       });
+      showError(getUserFacingErrorMessage(error, 'Erro ao criar ticket.'));
       setSaving(false);
     }
   };
@@ -748,11 +796,16 @@ function CreateTicketModal({
               </label>
               <select
                 value={type}
-                onChange={(e) => setType(e.target.value as TicketType)}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  if (isTicketType(nextValue)) {
+                    setType(nextValue);
+                  }
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               >
-                {(Object.entries(ticketTypeLabels) as [TicketType, string][]).map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
+                {ticketTypeValues.map((typeOption) => (
+                  <option key={typeOption} value={typeOption}>{ticketTypeLabels[typeOption]}</option>
                 ))}
               </select>
             </div>
@@ -763,13 +816,17 @@ function CreateTicketModal({
               </label>
               <select
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as TicketPriority)}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  if (isTicketPriority(nextValue)) {
+                    setPriority(nextValue);
+                  }
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               >
-                <option value="low">Baixa</option>
-                <option value="medium">Média</option>
-                <option value="high">Alta</option>
-                <option value="urgent">Urgente</option>
+                {ticketPriorityValues.map((priorityOption) => (
+                  <option key={priorityOption} value={priorityOption}>{PRIORITY_LABELS[priorityOption]}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -781,14 +838,17 @@ function CreateTicketModal({
               </label>
               <select
                 value={status}
-                onChange={(e) => setStatus(e.target.value as TicketStatus)}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  if (isTicketStatus(nextValue)) {
+                    setStatus(nextValue);
+                  }
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               >
-                <option value="backlog">Backlog</option>
-                <option value="todo">A Fazer</option>
-                <option value="in-progress">Em Progresso</option>
-                <option value="review">Em Revisão</option>
-                <option value="done">Concluído</option>
+                {ticketStatusValues.map((statusOption) => (
+                  <option key={statusOption} value={statusOption}>{STATUS_LABELS[statusOption]}</option>
+                ))}
               </select>
             </div>
 
