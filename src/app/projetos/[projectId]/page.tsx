@@ -133,7 +133,7 @@ function ProjectKanbanView({ projectId }: { projectId: string }) {
         onError: (createError) => {
           logger.error('Erro ao criar ticket', {
             action: 'create_ticket',
-            metadata: { projectId: project.id, error: String(createError) },
+            metadata: { projectId: project.id, error: createError },
             page: 'kanban',
           });
           showError('Não foi possível criar o ticket. Alterações desfeitas.');
@@ -263,7 +263,6 @@ function ProjectKanbanView({ projectId }: { projectId: string }) {
   return (
     <AppLayout 
       title={project.name}
-      subtitle={project.description}
       headerRightContent={
         <div className="flex items-center gap-2">
           {/* Navegação entre visualizações */}

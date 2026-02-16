@@ -53,20 +53,30 @@ service cloud.firestore {
       return /databases/$(database)/documents/projects/$(projectId);
     }
 
+    function projetosPath(projectId) {
+      return /databases/$(database)/documents/projetos/$(projectId);
+    }
+
     function projectExists(projectId) {
-      return exists(projectPath(projectId));
+      return exists(projectPath(projectId)) || exists(projetosPath(projectId));
     }
 
     function isProjectOwner(projectId) {
       return signedIn()
-        && projectExists(projectId)
-        && get(projectPath(projectId)).data.ownerId == request.auth.uid;
+        && (
+          (exists(projectPath(projectId)) && get(projectPath(projectId)).data.ownerId == request.auth.uid)
+          ||
+          (exists(projetosPath(projectId)) && get(projetosPath(projectId)).data.ownerId == request.auth.uid)
+        );
     }
 
     function isProjectMember(projectId) {
       return signedIn()
-        && projectExists(projectId)
-        && request.auth.uid in get(projectPath(projectId)).data.members;
+        && (
+          (exists(projectPath(projectId)) && request.auth.uid in get(projectPath(projectId)).data.members)
+          ||
+          (exists(projetosPath(projectId)) && request.auth.uid in get(projetosPath(projectId)).data.members)
+        );
     }
 
     function validStatus(status) {
@@ -185,7 +195,12 @@ service cloud.firestore {
     }
 
     match /projects/{projectId} {
-      allow read: if isProjectMember(projectId) || canManageAllProjects();
+      allow read: if signedIn()
+        && (
+          canManageAllProjects()
+          || resource.data.ownerId == request.auth.uid
+          || request.auth.uid in resource.data.members
+        );
 
       allow create: if signedIn()
         && hasOnlyProjectFields()
@@ -200,7 +215,7 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
 
-      allow update: if (isProjectOwner(projectId) || canManageAllProjects())
+      allow update: if (resource.data.ownerId == request.auth.uid || canManageAllProjects())
         && hasOnlyProjectFields()
         && validProjectName(request.resource.data.name)
         && validProjectDescription(request.resource.data.description)
@@ -210,7 +225,41 @@ service cloud.firestore {
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedAt == request.time;
 
-      allow delete: if isProjectOwner(projectId) || canDeleteProjects();
+      allow delete: if resource.data.ownerId == request.auth.uid || canDeleteProjects();
+    }
+
+    match /projetos/{projectId} {
+      allow read: if signedIn()
+        && (
+          canManageAllProjects()
+          || resource.data.ownerId == request.auth.uid
+          || request.auth.uid in resource.data.members
+        );
+
+      allow create: if signedIn()
+        && hasOnlyProjectFields()
+        && request.resource.data.workspaceId is string
+        && validProjectName(request.resource.data.name)
+        && request.resource.data.slug is string
+        && validProjectDescription(request.resource.data.description)
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.workspaceId == request.auth.uid
+        && request.resource.data.members is list
+        && request.auth.uid in request.resource.data.members
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if (resource.data.ownerId == request.auth.uid || canManageAllProjects())
+        && hasOnlyProjectFields()
+        && validProjectName(request.resource.data.name)
+        && validProjectDescription(request.resource.data.description)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.workspaceId == resource.data.workspaceId
+        && request.resource.data.slug == resource.data.slug
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if resource.data.ownerId == request.auth.uid || canDeleteProjects();
     }
 
     match /tickets/{ticketId} {

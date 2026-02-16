@@ -162,6 +162,42 @@ const getProjectTicketsCount = async (projectId: string): Promise<number> => {
   return ticketsSnapshot.docs.length;
 };
 
+const getErrorCode = (error: unknown): string | undefined => {
+  if (!isRecord(error) || typeof error.code !== 'string') {
+    return undefined;
+  }
+
+  return error.code;
+};
+
+const readProjectOwnerId = async (projectId: string): Promise<string | null> => {
+  const projectRefs = [doc(db, 'projects', projectId), doc(db, 'projetos', projectId)];
+
+  for (const projectRef of projectRefs) {
+    try {
+      const projectSnapshot = await getDoc(projectRef);
+      if (!projectSnapshot.exists()) {
+        continue;
+      }
+
+      const projectData = parseBasicProjectData(projectSnapshot.data());
+      if (!projectData?.ownerId) {
+        throw new Error('Projeto inválido para criação de ticket');
+      }
+
+      return projectData.ownerId;
+    } catch (error) {
+      if (getErrorCode(error) === 'permission-denied') {
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  return null;
+};
+
 export const generateSlug = (value: string): string => {
   return value
     .toLowerCase()
@@ -297,12 +333,33 @@ export const createProject = async (
 
     const workspaceId = getPersonalWorkspaceId(ownerId);
 
-    // Verifica se o slug já existe
-    const q = query(collection(db, 'projects'), where('slug', '==', normalizedSlug));
-    const querySnapshot = await getDocs(q);
-    
-    if (!querySnapshot.empty) {
-      throw new Error('Este slug já está em uso');
+    try {
+      const q = query(
+        collection(db, 'projects'),
+        where('ownerId', '==', ownerId),
+        where('slug', '==', normalizedSlug),
+        limit(1)
+      );
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        throw new Error('Este slug já está em uso para sua conta');
+      }
+    } catch (error) {
+      const errorCode = isRecord(error) && typeof error.code === 'string' ? error.code : undefined;
+      if (errorCode !== 'permission-denied') {
+        throw error;
+      }
+
+      logger.warn('Validação de slug ignorada por falta de permissão de leitura', {
+        action: 'create_project_slug_validation_skipped',
+        userId: ownerId,
+        metadata: {
+          slug: normalizedSlug,
+          error,
+        },
+        page: 'services',
+      });
     }
 
     const docRef = await addDoc(collection(db, 'projects'), {
@@ -428,44 +485,73 @@ export const createTicket = async (
       throw new Error(enumsValidation.error || 'Dados do ticket inválidos');
     }
 
-    const projectRef = doc(db, 'projects', projectId);
-    const projectSnapshot = await getDoc(projectRef);
-    if (!projectSnapshot.exists()) {
-      throw new Error('Projeto não encontrado');
-    }
-
-    const projectData = parseBasicProjectData(projectSnapshot.data());
-    const ownerId = projectData?.ownerId;
+    const ownerId = await readProjectOwnerId(projectId);
     if (!ownerId) {
-      throw new Error('Projeto inválido para criação de ticket');
+      throw new Error('Projeto não encontrado ou sem permissão para criar ticket');
     }
 
     const ownerPlanId = await getUserPlanId(ownerId);
-    const currentTicketsCount = await getProjectTicketsCount(projectId);
+    let currentTicketsCount = 0;
+    try {
+      currentTicketsCount = await getProjectTicketsCount(projectId);
+    } catch (countError) {
+      if (getErrorCode(countError) !== 'permission-denied') {
+        throw countError;
+      }
+
+      logger.warn('Contagem de tickets ignorada por falta de permissão de leitura', {
+        action: 'create_ticket_count_skipped',
+        userId: ownerId,
+        metadata: {
+          projectId,
+          error: countError,
+        },
+        page: 'services',
+      });
+    }
+
     if (!canCreateTicket(ownerPlanId, currentTicketsCount)) {
       const plan = getPlan(ownerPlanId);
       throw new Error(`Limite do plano ${plan.name} atingido para criação de tickets neste projeto`);
     }
 
     // Busca o maior order atual (consulta otimizada)
-    const q = query(
-      collection(db, 'tickets'),
-      where('projectId', '==', projectId),
-      where('status', '==', status),
-      orderBy('order', 'desc'),
-      limit(1)
-    );
-    const querySnapshot = await getDocs(q);
-    const maxOrder = querySnapshot.empty
-      ? 0
-      : (() => {
-          const firstDocData = querySnapshot.docs[0].data();
-          if (!isRecord(firstDocData) || typeof firstDocData.order !== 'number') {
-            return 0;
-          }
+    let maxOrder = 0;
+    try {
+      const q = query(
+        collection(db, 'tickets'),
+        where('projectId', '==', projectId),
+        where('status', '==', status),
+        orderBy('order', 'desc'),
+        limit(1)
+      );
+      const querySnapshot = await getDocs(q);
+      maxOrder = querySnapshot.empty
+        ? 0
+        : (() => {
+            const firstDocData = querySnapshot.docs[0].data();
+            if (!isRecord(firstDocData) || typeof firstDocData.order !== 'number') {
+              return 0;
+            }
 
-          return firstDocData.order;
-        })();
+            return firstDocData.order;
+          })();
+    } catch (orderError) {
+      if (getErrorCode(orderError) !== 'permission-denied') {
+        throw orderError;
+      }
+
+      logger.warn('Ordenação de tickets ignorada por falta de permissão de leitura', {
+        action: 'create_ticket_order_skipped',
+        userId: ownerId,
+        metadata: {
+          projectId,
+          status,
+          error: orderError,
+        },
+        page: 'services',
+      });
+    }
 
     const docRef = await addDoc(collection(db, 'tickets'), {
       projectId,

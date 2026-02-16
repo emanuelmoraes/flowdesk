@@ -62,15 +62,29 @@ function ProjetosContent() {
         return;
       }
       
-      // Buscar TODOS os tickets de uma vez
-      const projectIds = projectsData.map(p => p.id);
-      const ticketsQuery = query(
-        collection(db, 'tickets').withConverter(ticketConverter),
-        where('projectId', 'in', projectIds.slice(0, 10)) // Firestore limita 'in' a 10 itens
-      );
-      const ticketsSnapshot = await getDocs(ticketsQuery);
-      
-      const allTickets = ticketsSnapshot.docs.map((ticketDoc) => ticketDoc.data());
+      // Buscar tickets para cálculo de progresso (com fallback em caso de permissão)
+      const projectIds = projectsData.map((project) => project.id);
+      let allTickets: Ticket[] = [];
+
+      try {
+        const ticketsQuery = query(
+          collection(db, 'tickets').withConverter(ticketConverter),
+          where('projectId', 'in', projectIds.slice(0, 10)) // Firestore limita 'in' a 10 itens
+        );
+        const ticketsSnapshot = await getDocs(ticketsQuery);
+        allTickets = ticketsSnapshot.docs.map((ticketDoc) => ticketDoc.data());
+      } catch (ticketsError) {
+        logger.error('Erro ao carregar tickets para progresso dos projetos', {
+          action: 'load_projects_tickets',
+          userId: user.uid,
+          metadata: {
+            phase: 'tickets_query',
+            projectIds,
+            error: ticketsError,
+          },
+          page: 'projetos',
+        });
+      }
       
       // Agrupar tickets por projeto (no cliente) usando função utilitária
       const ticketsByProject = getTicketsByProject(allTickets);
@@ -92,9 +106,14 @@ function ProjetosContent() {
     } catch (error) {
       logger.error('Erro ao carregar projetos', {
         action: 'load_projects',
-        metadata: { error: String(error) },
+        userId: user.uid,
+        metadata: {
+          phase: 'projects_query',
+          error,
+        },
         page: 'projetos',
       });
+      setProjects([]);
     } finally {
       setLoading(false);
     }

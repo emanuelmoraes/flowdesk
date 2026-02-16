@@ -109,7 +109,7 @@ function CriarProjetoContent() {
                   className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono text-sm"
                   placeholder="meu-projeto"
                   required
-                  pattern="[a-z0-9-]+"
+                  pattern="[a-z0-9\\-]+"
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">

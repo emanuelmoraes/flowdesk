@@ -69,6 +69,13 @@ export function useAuth(): UseAuthReturn {
 
   // Busca o perfil do usuário no Firestore
   const fetchUserProfile = useCallback(async (firebaseUser: User) => {
+    const fallbackProfile: UserProfile = {
+      uid: firebaseUser.uid,
+      email: firebaseUser.email || '',
+      displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0],
+      role: DEFAULT_USER_ROLE,
+    };
+
     try {
       const userDocRef = doc(db, 'users', firebaseUser.uid);
       const userDoc = await getDoc(userDocRef);
@@ -80,7 +87,7 @@ export function useAuth(): UseAuthReturn {
         const role: UserRole =
           typeof rawRole === 'string' && isValidRole(rawRole) ? rawRole : DEFAULT_USER_ROLE;
         
-        setUserProfile({
+        const resolvedProfile: UserProfile = {
           uid: firebaseUser.uid,
           email: firebaseUser.email || '',
           displayName: typeof data.displayName === 'string' ? data.displayName : undefined,
@@ -94,10 +101,22 @@ export function useAuth(): UseAuthReturn {
             : undefined,
           createdAt: hasToDate(data.createdAt) ? data.createdAt.toDate() : undefined,
           lastLogin: hasToDate(data.lastLogin) ? data.lastLogin.toDate() : undefined,
-        });
+        };
 
-        // Atualiza o último login
-        await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
+        setUserProfile(resolvedProfile);
+
+        try {
+          await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
+        } catch (lastLoginError) {
+          logger.warn('Não foi possível atualizar lastLogin do usuário', {
+            action: 'update_last_login',
+            userId: firebaseUser.uid,
+            metadata: { error: lastLoginError },
+            page: 'useAuth',
+          });
+        }
+
+        return;
       } else {
         // Cria perfil se não existir
         const newProfile = {
@@ -107,20 +126,29 @@ export function useAuth(): UseAuthReturn {
           createdAt: serverTimestamp(),
           lastLogin: serverTimestamp(),
         };
-        await setDoc(userDocRef, newProfile);
-        setUserProfile({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          displayName: newProfile.displayName,
-          role: DEFAULT_USER_ROLE,
-        });
+
+        try {
+          await setDoc(userDocRef, newProfile);
+        } catch (createProfileError) {
+          logger.warn('Não foi possível criar perfil Firestore do usuário; usando fallback local', {
+            action: 'create_user_profile_fallback',
+            userId: firebaseUser.uid,
+            metadata: { error: createProfileError },
+            page: 'useAuth',
+          });
+        }
+
+        setUserProfile(fallbackProfile);
+        return;
       }
     } catch (error) {
       logger.error('Erro ao carregar perfil do usuário', {
         action: 'load_user_profile',
-        metadata: { uid: firebaseUser.uid, error: String(error) },
+        userId: firebaseUser.uid,
+        metadata: { uid: firebaseUser.uid, error },
         page: 'useAuth',
       });
+      setUserProfile(fallbackProfile);
       setError(getUserFacingErrorMessage(error, 'Erro ao carregar perfil do usuário. Algumas permissões podem ficar indisponíveis.'));
     }
   }, []);
@@ -217,7 +245,7 @@ export function useAuth(): UseAuthReturn {
     } catch (error) {
       logger.error('Erro ao realizar logout', {
         action: 'sign_out',
-        metadata: { error: String(error) },
+        metadata: { error },
         page: 'useAuth',
       });
       setError(getUserFacingErrorMessage(error, 'Erro ao sair da conta. Tente novamente.'));

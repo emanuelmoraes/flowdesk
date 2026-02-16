@@ -11,9 +11,12 @@ describe('firestore.rules - regressão de permissões', () => {
   });
 
   it('restringe leitura/escrita de projeto por member/owner/roles elevadas', () => {
-    expect(rules).toContain('allow read: if isProjectMember(projectId) || canManageAllProjects();');
-    expect(rules).toContain('allow update: if (isProjectOwner(projectId) || canManageAllProjects())');
-    expect(rules).toContain('allow delete: if isProjectOwner(projectId) || canDeleteProjects();');
+    expect(rules).toContain('match /projects/{projectId} {');
+    expect(rules).toContain('match /projetos/{projectId} {');
+    expect(rules).toContain('|| resource.data.ownerId == request.auth.uid');
+    expect(rules).toContain('|| request.auth.uid in resource.data.members');
+    expect(rules).toContain('allow update: if (resource.data.ownerId == request.auth.uid || canManageAllProjects())');
+    expect(rules).toContain('allow delete: if resource.data.ownerId == request.auth.uid || canDeleteProjects();');
   });
 
   it('restringe tickets ao contexto do projeto e valida campos críticos', () => {

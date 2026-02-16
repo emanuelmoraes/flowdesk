@@ -2,10 +2,6 @@ name: Deploy App Hosting
 
 on:
   push:
-    branches:
-      - develop
-      - staging
-      - main
   workflow_dispatch:
 
 jobs:
