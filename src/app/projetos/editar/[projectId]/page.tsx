@@ -27,11 +27,8 @@ export default function EditarProjetoPage() {
 }
 
 function EditarProjetoContent() {
-  const router = useRouter();
   const params = useParams();
   const projectId = getSingleRouteParam(params.projectId);
-  const { user } = useAuth();
-  const { showSuccess, showError } = useNotification();
 
   if (!projectId) {
     return (
@@ -42,6 +39,14 @@ function EditarProjetoContent() {
       </AppLayout>
     );
   }
+
+  return <EditarProjetoView projectId={projectId} />;
+}
+
+function EditarProjetoView({ projectId }: { projectId: string }) {
+  const router = useRouter();
+  const { user } = useAuth();
+  const { showSuccess, showError } = useNotification();
 
   const [project, setProject] = useState<Project | null>(null);
   const [name, setName] = useState('');

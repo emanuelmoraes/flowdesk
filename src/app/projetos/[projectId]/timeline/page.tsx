@@ -21,7 +21,6 @@ export default function ProjectTimelinePage() {
 
 function ProjectTimelineContent() {
   const params = useParams();
-  const router = useRouter();
   const projectId = getSingleRouteParam(params.projectId);
 
   if (!projectId) {
@@ -33,7 +32,13 @@ function ProjectTimelineContent() {
       </AppLayout>
     );
   }
-  
+
+  return <ProjectTimelineView projectId={projectId} />;
+}
+
+function ProjectTimelineView({ projectId }: { projectId: string }) {
+  const router = useRouter();
+
   const { project, loading: projectLoading, error } = useProjectById(projectId);
   const { tickets, loading: ticketsLoading } = useTickets(projectId);
 

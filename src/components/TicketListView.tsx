@@ -75,7 +75,7 @@ export default function TicketListView({ tickets, onEditTicket }: TicketListView
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
         <p className="text-gray-500">Ainda não há tickets neste projeto.</p>
         <p className="text-gray-400 text-sm mt-2">
-          Clique em "+ Novo Ticket" para registrar a primeira tarefa e começar o fluxo do time.
+          Clique em &quot;+ Novo Ticket&quot; para registrar a primeira tarefa e começar o fluxo do time.
         </p>
       </div>
     );

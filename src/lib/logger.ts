@@ -1,5 +1,6 @@
 import { collection, addDoc, serverTimestamp, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { captureLoggerError } from '@/lib/sentry';
 
 export type LogLevel = 'info' | 'warn' | 'error' | 'success';
 
@@ -78,8 +79,17 @@ export const logger = {
   warn: (message: string, options?: Omit<CreateLogParams, 'level' | 'message'>) =>
     createLog({ level: 'warn', message, ...options }),
 
-  error: (message: string, options?: Omit<CreateLogParams, 'level' | 'message'>) =>
-    createLog({ level: 'error', message, ...options }),
+  error: (message: string, options?: Omit<CreateLogParams, 'level' | 'message'>) => {
+    captureLoggerError({
+      message,
+      userId: options?.userId,
+      action: options?.action,
+      page: options?.page,
+      metadata: options?.metadata,
+    });
+
+    return createLog({ level: 'error', message, ...options });
+  },
 
   success: (message: string, options?: Omit<CreateLogParams, 'level' | 'message'>) =>
     createLog({ level: 'success', message, ...options }),

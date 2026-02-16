@@ -21,7 +21,6 @@ export default function ProjectGanttPage() {
 
 function ProjectGanttContent() {
   const params = useParams();
-  const router = useRouter();
   const projectId = getSingleRouteParam(params.projectId);
 
   if (!projectId) {
@@ -33,7 +32,13 @@ function ProjectGanttContent() {
       </AppLayout>
     );
   }
-  
+
+  return <ProjectGanttView projectId={projectId} />;
+}
+
+function ProjectGanttView({ projectId }: { projectId: string }) {
+  const router = useRouter();
+
   const { project, loading: projectLoading, error } = useProjectById(projectId);
   const { tickets, loading: ticketsLoading } = useTickets(projectId);
 

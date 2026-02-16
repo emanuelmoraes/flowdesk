@@ -16,20 +16,15 @@ import { Project, Ticket } from '@/types';
 
 // Hook para buscar projeto por ID
 export const useProjectById = (projectId: string) => {
+  const hasProjectId = Boolean(projectId);
   const [project, setProject] = useState<Project | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(hasProjectId);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!projectId) {
-      setProject(null);
-      setError(null);
-      setLoading(false);
+    if (!hasProjectId) {
       return;
     }
-
-    setLoading(true);
-    setError(null);
 
     const docRef = doc(db, 'projects', projectId).withConverter(projectConverter);
     const unsubscribe = onSnapshot(
@@ -57,27 +52,26 @@ export const useProjectById = (projectId: string) => {
     );
 
     return () => unsubscribe();
-  }, [projectId]);
+  }, [hasProjectId, projectId]);
 
-  return { project, loading, error };
+  return {
+    project: hasProjectId ? project : null,
+    loading: hasProjectId ? loading : false,
+    error: hasProjectId ? error : null,
+  };
 };
 
 // Hook para buscar projeto por slug (legacy - pode ser removido futuramente)
 export const useProject = (slug: string) => {
+  const hasSlug = Boolean(slug);
   const [project, setProject] = useState<Project | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(hasSlug);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!slug) {
-      setProject(null);
-      setError(null);
-      setLoading(false);
+    if (!hasSlug) {
       return;
     }
-
-    setLoading(true);
-    setError(null);
 
     const q = query(
       collection(db, 'projects').withConverter(projectConverter),
@@ -110,26 +104,25 @@ export const useProject = (slug: string) => {
     );
 
     return () => unsubscribe();
-  }, [slug]);
+  }, [hasSlug, slug]);
 
-  return { project, loading, error };
+  return {
+    project: hasSlug ? project : null,
+    loading: hasSlug ? loading : false,
+    error: hasSlug ? error : null,
+  };
 };
 
 export const useTickets = (projectId: string) => {
+  const hasProjectId = Boolean(projectId);
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(hasProjectId);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!projectId) {
-      setTickets([]);
-      setError(null);
-      setLoading(false);
+    if (!hasProjectId) {
       return;
     }
-
-    setLoading(true);
-    setError(null);
 
     const q = query(
       collection(db, 'tickets').withConverter(ticketConverter),
@@ -158,7 +151,12 @@ export const useTickets = (projectId: string) => {
     );
 
     return () => unsubscribe();
-  }, [projectId]);
+  }, [hasProjectId, projectId]);
 
-  return { tickets, loading, error, setTickets };
+  return {
+    tickets: hasProjectId ? tickets : [],
+    loading: hasProjectId ? loading : false,
+    error: hasProjectId ? error : null,
+    setTickets,
+  };
 };

@@ -2,7 +2,7 @@
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useProjectById, useTickets } from '@/hooks/useProject';
 import KanbanBoardNative from '@/components/KanbanBoardNative';
 import Modal from '@/components/ui/Modal';
@@ -39,8 +39,6 @@ export default function ProjectKanbanPage() {
 }
 
 function ProjectKanbanContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const params = useParams();
   const projectId = getSingleRouteParam(params.projectId);
 
@@ -53,7 +51,14 @@ function ProjectKanbanContent() {
       </AppLayout>
     );
   }
-  
+
+  return <ProjectKanbanView projectId={projectId} />;
+}
+
+function ProjectKanbanView({ projectId }: { projectId: string }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const { project, loading: projectLoading, error } = useProjectById(projectId);
   const { tickets, loading: ticketsLoading, setTickets } = useTickets(projectId);
   const { showError } = useNotification();
@@ -61,7 +66,13 @@ function ProjectKanbanContent() {
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(() => {
+    if (!onboardingRequested || typeof window === 'undefined') {
+      return false;
+    }
+
+    return window.localStorage.getItem('flowdesk-onboarding-first-project') !== 'done';
+  });
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
   const [newTicketTitle, setNewTicketTitle] = useState('');
   const [newTicketDescription, setNewTicketDescription] = useState('');
@@ -69,17 +80,6 @@ function ProjectKanbanContent() {
   const [newTicketStatus, setNewTicketStatus] = useState<TicketStatus>('backlog');
   const [newTicketType, setNewTicketType] = useState<TicketType>('tarefa');
   const [newTicketTags, setNewTicketTags] = useState<string>('');
-
-  useEffect(() => {
-    if (!onboardingRequested) {
-      return;
-    }
-
-    const onboardingDone = window.localStorage.getItem('flowdesk-onboarding-first-project') === 'done';
-    if (!onboardingDone) {
-      setShowOnboardingModal(true);
-    }
-  }, [onboardingRequested]);
 
   const handleCompleteOnboarding = (): void => {
     window.localStorage.setItem('flowdesk-onboarding-first-project', 'done');

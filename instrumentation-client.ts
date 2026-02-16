@@ -1,12 +1,6 @@
 import * as Sentry from '@sentry/nextjs';
+import { getSentryInitConfig } from '@/lib/sentry';
 
-Sentry.init({
-  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
-  tracesSampleRate: 0.1,
-  environment: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT || process.env.NODE_ENV,
-  replaysOnErrorSampleRate: 0,
-  replaysSessionSampleRate: 0,
-});
+Sentry.init(getSentryInitConfig('client'));
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

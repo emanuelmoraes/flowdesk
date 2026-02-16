@@ -4,6 +4,7 @@ import { recordServerAuditTrail } from '@/lib/auditServer';
 import { trackServerBusinessEvent } from '@/lib/businessEventsServer';
 import { adminDb } from '@/lib/firebaseAdmin';
 import { getPlanFromStripePriceId, getStripe } from '@/lib/billing';
+import { captureApiException } from '@/lib/sentry';
 
 async function resolveUserIdByCustomerId(customerId: string): Promise<string | null> {
   const userSnapshot = await adminDb
@@ -131,6 +132,8 @@ const isSubscriptionDeletedEvent = (event: Stripe.Event): event is Stripe.Custom
 };
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  let eventType: string | undefined;
+
   try {
     const signature = request.headers.get('stripe-signature');
     if (!signature) {
@@ -145,6 +148,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const payload = await request.text();
     const stripe = getStripe();
     const event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+    eventType = event.type;
 
     if (isCheckoutCompletedEvent(event)) {
       await handleCheckoutCompleted(event);
@@ -154,6 +158,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({ received: true });
   } catch (error) {
+    captureApiException(error, {
+      route: '/api/billing/webhook',
+      method: 'POST',
+      tags: {
+        stripe_event_type: eventType,
+      },
+      metadata: {
+        eventType,
+      },
+      fingerprint: ['api', 'billing', 'webhook', 'post', eventType || 'unknown'],
+    });
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro ao processar webhook' },
       { status: 400 }

@@ -59,11 +59,8 @@ export default function GerenciarTicketsPage() {
 }
 
 function GerenciarTicketsContent() {
-  const router = useRouter();
   const params = useParams();
   const projectId = getSingleRouteParam(params.projectId);
-  const { user } = useAuth();
-  const { showError } = useNotification();
 
   if (!projectId) {
     return (
@@ -74,6 +71,14 @@ function GerenciarTicketsContent() {
       </AppLayout>
     );
   }
+
+  return <GerenciarTicketsView projectId={projectId} />;
+}
+
+function GerenciarTicketsView({ projectId }: { projectId: string }) {
+  const router = useRouter();
+  const { user } = useAuth();
+  const { showError } = useNotification();
 
   const [project, setProject] = useState<Project | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);

@@ -45,6 +45,8 @@ cp .env.local.example .env.local
 - `SENTRY_PROJECT` (opcional, para sourcemaps em build)
 - `SENTRY_AUTH_TOKEN` (opcional, para sourcemaps em build)
 
+Para detalhes de cada variável e exemplos completos por ambiente, consulte `doc/SENTRY.md`.
+
 5. Rodar aplicação
 ```bash
 npm run dev

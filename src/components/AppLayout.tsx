@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Sidebar from '@/components/Sidebar';
 import AppHeader from '@/components/AppHeader';
 
@@ -23,15 +23,13 @@ export default function AppLayout({
   headerRightContent,
   showNewProject = false,
 }: AppLayoutProps) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
-  // Sincroniza com localStorage no mount
-  useEffect(() => {
-    const saved = localStorage.getItem('sidebar-collapsed');
-    if (saved !== null) {
-      setSidebarCollapsed(saved === 'true');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
     }
-  }, []);
+
+    return localStorage.getItem('sidebar-collapsed') === 'true';
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">

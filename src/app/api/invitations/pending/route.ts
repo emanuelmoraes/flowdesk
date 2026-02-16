@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { captureApiException } from '@/lib/sentry';
 
 type ProjectInviteStatus = 'pending' | 'accepted' | 'declined' | 'canceled';
 
@@ -72,6 +73,8 @@ function getBearerToken(request: NextRequest): string | null {
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
+  let userId: string | undefined;
+
   try {
     const token = getBearerToken(request);
     if (!token) {
@@ -79,6 +82,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     const decoded = await adminAuth.verifyIdToken(token);
+    userId = decoded.uid;
     const userRef = adminDb.collection('users').doc(decoded.uid);
     const userSnapshot = await userRef.get();
     const userData = userSnapshot.exists ? userSnapshot.data() : undefined;
@@ -126,6 +130,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       invites: responseInvites,
     });
   } catch (error) {
+    captureApiException(error, {
+      route: '/api/invitations/pending',
+      method: 'GET',
+      userId,
+      fingerprint: ['api', 'invitations', 'pending', 'get'],
+    });
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro ao buscar convites pendentes' },
       { status: 500 }

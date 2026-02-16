@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { FaHouse, FaFolderOpen, FaCreditCard, FaChevronLeft, FaChevronRight } from 'react-icons/fa6';
@@ -30,20 +30,16 @@ const menuItems = [
 
 export default function Sidebar({ collapsed: controlledCollapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
-  const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const [internalCollapsed, setInternalCollapsed] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+
+    return localStorage.getItem('sidebar-collapsed') === 'true';
+  });
   
   // Usa estado controlado se fornecido, senão usa interno
   const collapsed = controlledCollapsed ?? internalCollapsed;
-  
-  // Carrega preferência do localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('sidebar-collapsed');
-    if (saved !== null) {
-      const value = saved === 'true';
-      setInternalCollapsed(value);
-      onToggle?.(value);
-    }
-  }, [onToggle]);
 
   const handleToggle = () => {
     const newValue = !collapsed;

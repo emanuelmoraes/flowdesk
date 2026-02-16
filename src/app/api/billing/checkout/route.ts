@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { trackServerBusinessEvent } from '@/lib/businessEventsServer';
 import { getAppUrl, getStripe, getStripePriceIdForPlan } from '@/lib/billing';
+import { captureApiException } from '@/lib/sentry';
 import { SubscriptionPlanId } from '@/types';
 
 type CheckoutBody = {
@@ -35,6 +36,8 @@ function getBearerToken(request: NextRequest): string | null {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  let userId: string | undefined;
+
   try {
     const token = getBearerToken(request);
     if (!token) {
@@ -42,6 +45,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const decoded = await adminAuth.verifyIdToken(token);
+    userId = decoded.uid;
     const rawBody: unknown = await request.json();
     const body = parseCheckoutBody(rawBody);
 
@@ -105,6 +109,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
+    captureApiException(error, {
+      route: '/api/billing/checkout',
+      method: 'POST',
+      userId,
+      fingerprint: ['api', 'billing', 'checkout', 'post'],
+    });
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro ao iniciar checkout' },
       { status: 500 }

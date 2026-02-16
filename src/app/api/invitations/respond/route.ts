@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { recordServerAuditTrail } from '@/lib/auditServer';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
+import { captureApiException } from '@/lib/sentry';
 
 type InviteStatus = 'pending' | 'accepted' | 'declined' | 'canceled';
 
@@ -81,6 +82,10 @@ function getBearerToken(request: NextRequest): string | null {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  let userId: string | undefined;
+  let inviteId: string | undefined;
+  let projectId: string | undefined;
+
   try {
     const token = getBearerToken(request);
     if (!token) {
@@ -88,12 +93,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const decoded = await adminAuth.verifyIdToken(token);
+    userId = decoded.uid;
     const rawBody: unknown = await request.json();
     const body = parseRespondBody(rawBody);
 
     if (!body) {
       return NextResponse.json({ error: 'Parâmetros inválidos' }, { status: 400 });
     }
+    inviteId = body.inviteId;
 
     const userRef = adminDb.collection('users').doc(decoded.uid);
     const userSnapshot = await userRef.get();
@@ -111,6 +118,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!inviteData) {
       return NextResponse.json({ error: 'Convite inválido' }, { status: 400 });
     }
+    projectId = inviteData.projectId;
 
     if (inviteData.status !== 'pending') {
       return NextResponse.json({ error: 'Convite não está pendente' }, { status: 400 });
@@ -183,6 +191,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    captureApiException(error, {
+      route: '/api/invitations/respond',
+      method: 'POST',
+      userId,
+      projectId,
+      metadata: {
+        inviteId,
+      },
+      fingerprint: ['api', 'invitations', 'respond', 'post'],
+    });
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro ao responder convite' },
       { status: 500 }

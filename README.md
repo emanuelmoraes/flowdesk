@@ -7,6 +7,7 @@ FlowDesk é uma plataforma de gestão de projetos com Kanban, autenticação e c
 Para evitar duplicidade, a documentação técnica foi centralizada em `doc/`:
 
 - Desenvolvimento: `doc/DEVELOPMENT.md`
+- Sentry (configuração e operação): `doc/SENTRY.md`
 - Deploy oficial: `doc/DEPLOYMENT.md`
 - Guia detalhado de App Hosting: `doc/APP_HOSTING_GUIDE.md`
 - Plano de evolução: `doc/melhorias.md`
@@ -49,8 +50,16 @@ npm install
 2. Configure as variáveis no `.env.local`:
 ```env
 NEXT_PUBLIC_SENTRY_DSN=
+SENTRY_DSN=
 SENTRY_ENVIRONMENT=development
 NEXT_PUBLIC_SENTRY_ENVIRONMENT=development
+SENTRY_RELEASE=
+
+# opcionais (tuning de amostragem)
+SENTRY_TRACES_SAMPLE_RATE=
+NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=
+SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE=
+SENTRY_REPLAYS_SESSION_SAMPLE_RATE=
 
 # opcionais (necessárias para upload de sourcemaps em build/release)
 SENTRY_ORG=
@@ -77,7 +86,7 @@ setTimeout(() => {
 
 ### Observações
 
-- Sem `NEXT_PUBLIC_SENTRY_DSN`, a integração fica desabilitada.
+- Sem `NEXT_PUBLIC_SENTRY_DSN` (client) e/ou `SENTRY_DSN` (server/edge), a integração correspondente fica desabilitada.
 - `SENTRY_ORG`, `SENTRY_PROJECT` e `SENTRY_AUTH_TOKEN` são usados no pipeline de build para upload de sourcemaps (recomendado para produção).
 
 ## Observação

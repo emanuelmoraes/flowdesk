@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebaseAdmin';
 import { getAppUrl, getStripe } from '@/lib/billing';
+import { captureApiException } from '@/lib/sentry';
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null;
@@ -16,6 +17,8 @@ function getBearerToken(request: NextRequest): string | null {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  let userId: string | undefined;
+
   try {
     const token = getBearerToken(request);
     if (!token) {
@@ -23,6 +26,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const decoded = await adminAuth.verifyIdToken(token);
+    userId = decoded.uid;
     const userRef = adminDb.collection('users').doc(decoded.uid);
     const userSnapshot = await userRef.get();
     const userData = userSnapshot.exists ? userSnapshot.data() : undefined;
@@ -42,6 +46,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
+    captureApiException(error, {
+      route: '/api/billing/portal',
+      method: 'POST',
+      userId,
+      fingerprint: ['api', 'billing', 'portal', 'post'],
+    });
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erro ao abrir portal de cobrança' },
       { status: 500 }
