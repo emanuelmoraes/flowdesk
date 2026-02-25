@@ -13,8 +13,27 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+const hasCompleteFirebaseConfig = Object.values(firebaseConfig).every(
+  (value) => typeof value === 'string' && value.length > 0
+);
+
+if (!hasCompleteFirebaseConfig && typeof window !== 'undefined') {
+  throw new Error('Configuração do Firebase incompleta. Verifique as variáveis NEXT_PUBLIC_FIREBASE_* no ambiente.');
+}
+
+const firebaseConfigForInitialization = hasCompleteFirebaseConfig
+  ? firebaseConfig
+  : {
+      apiKey: 'ci-placeholder-api-key',
+      authDomain: 'ci-placeholder.firebaseapp.com',
+      projectId: 'ci-placeholder',
+      storageBucket: 'ci-placeholder.appspot.com',
+      messagingSenderId: '0',
+      appId: '1:0:web:ci-placeholder',
+    };
+
 // Inicializa o Firebase apenas se ainda não foi inicializado
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const app = getApps().length === 0 ? initializeApp(firebaseConfigForInitialization) : getApps()[0];
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
